@@ -39,14 +39,13 @@
 #include "adc.h"
 #include "misc.h"
 #include "snapper.h"
+#include "led.h"
 
 struct TConfig Config;
 
 // Pin allocations.  Do not change unless you're using your own hardware
 #define NTX2B_ENABLE	0
 #define UBLOX_ENABLE	2
-#define LED_WARN		11
-#define LED_OK			4
 
 FILE *ImageFP;
 int Records, FileNumber;
@@ -374,7 +373,7 @@ int main(void)
 	char Sentence[100];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread;
+	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread, LEDThread;
 
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf("=======================================\n\n");
@@ -405,14 +404,9 @@ int main(void)
 		exit (1);
 	}
 	
-	// We have 2 LED outputs and 2 enable outputs
+	// We have 2 enable outputs
 	pinMode (NTX2B_ENABLE, OUTPUT);
 	pinMode (UBLOX_ENABLE, OUTPUT);
-	pinMode (LED_WARN, OUTPUT);
-	pinMode (LED_OK, OUTPUT);
-
-	// WARN stays on till we've got a lock
-	digitalWrite (LED_WARN, 1);
 	
 	// Switch on the GPS
 	digitalWrite (UBLOX_ENABLE, 0);
@@ -471,14 +465,16 @@ int main(void)
 		}
 	}
 
-	while (1)
+	if (pthread_create(&LEDThread, NULL, LEDLoop, &GPS))
 	{
-		digitalWrite (LED_OK, Sentence_Counter & 1);
-		
+		fprintf(stderr, "Error creating LED thread\n");
+		return 1;
+	}
+	
+	while (1)
+	{	
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
 		
-		digitalWrite (LED_WARN, GPS.Satellites < 4);
-
 		SendSentence(Sentence);
 		
 		for (i=0; i<Config.image_packets; i++)

@@ -50,9 +50,9 @@ void *CameraLoop(void *some_void_ptr)
 		{
 			if ((fp = fopen(filename, "wt")) != NULL)
 			{
-				fprintf(fp, "raspistill -w %d -h %d -t 2000 -ex auto -mm matrix -o /home/pi/tracker/download/%s_$1.jpg", width, height, prefix);
+				fprintf(fp, "raspistill -v -w %d -h %d -t 2000 -ex auto -mm matrix -o /home/pi/tracker/download/%s_$1.jpg", width, height, prefix);
 				fclose(fp);
-				chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH); 
+				chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 				new_mode = old_mode;
 			}
 		}
