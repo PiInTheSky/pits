@@ -1,0 +1,4 @@
+./initwebcam
+
+sudo .././ffmpeg/ffmpeg -f video4linux2 -i /dev/video0 -acodec libmp3lame -b:v 80k -vf  "drawtext=fontfile='/usr/share/fonts/truetype/ttf-dejavu/DejaVuSansMono.ttf':textfile=batc.txt:reload=1:x=20:y=210:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.7" -f flv "rtmp://fms.batc.tv/live/m23d56/m23d56"
+

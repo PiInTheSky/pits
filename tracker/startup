@@ -1,0 +1,6 @@
+#!/bin/bash
+cd /home/pi/tracker
+sudo modprobe w1-gpio
+sudo modprobe  w1_therm
+./camera &
+sudo ./tracker

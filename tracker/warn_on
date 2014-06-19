@@ -1,0 +1,2 @@
+gpio mode 11 out
+gpio write 11 1
