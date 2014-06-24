@@ -50,8 +50,8 @@ struct TConfig Config;
 FILE *ImageFP;
 int Records, FileNumber;
 struct termios options;
-char *SSDVFolder="/home/pi/tracker/download";
-char *SavedImageFolder="/home/pi/tracker/download/keep";
+char *SSDVFolder="/home/pi/pits/tracker/download";
+char *SavedImageFolder="/home/pi/pits/tracker/download/keep";
  
 void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
@@ -311,7 +311,7 @@ int FindAndConvertImage(void)
 		// Now convert the file
 		FileNumber++;
 		FileNumber = FileNumber & 255;
-		sprintf(CommandLine, "/home/pi/tracker/ssdv -e -c %s -i %d %s /home/pi/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
+		sprintf(CommandLine, "ssdv -e -c %s -i %d %s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
 		system(CommandLine);
 		
 		// And move those pesky image files
@@ -335,7 +335,7 @@ int SendImage()
     {
 		if (FindAndConvertImage())
 		{
-			ImageFP = fopen("/home/pi/tracker/snap.bin", "r");
+			ImageFP = fopen("/home/pi/pits/tracker/snap.bin", "r");
 		}
         Records = 0;
     }
@@ -428,6 +428,7 @@ int main(void)
 	// SPI for ADC
 	system("gpio load spi");
 	
+	/*
 	if (stat(SSDVFolder, &st) == -1)
 	{
 		mkdir(SSDVFolder, 0700);
@@ -436,7 +437,8 @@ int main(void)
 	if (stat(SavedImageFolder, &st) == -1)
 	{
 		mkdir(SavedImageFolder, 0700);
-	}	
+	}
+	*/
 
 	if (pthread_create(&GPSThread, NULL, GPSLoop, &GPS))
 	{

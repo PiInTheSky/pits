@@ -1,0 +1,19 @@
+PITS - Tracker software for the PITS board, for use in High Altitude Ballooning.
+
+Created by Dave Akerman (dave@daveakerman.com)
+
+This software is written for the Raspberry Pi model A or B,
+with the Pi In The Sky (PITS) board from http://ava.upuaut.net/store/
+
+Software support is provided for customers who have
+purchased a PITS board, for use with that board only.
+
+INSTALLING
+
+Follow the instructions at http://www.daveakerman.com/?page_id=1569
+
+TODO
+
+* Remove hard-coded paths
+* More configuration options
+

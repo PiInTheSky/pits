@@ -1,0 +1,24 @@
+# Build tracker program
+echo Building tracker ...
+cd tracker
+make
+cd ..
+
+# Crete folders for images
+echo Creating folders for images
+mkdir -p download/keep
+
+# Copy configuration file to boot partition
+echo Copying configuration file ...
+sudo cp -f boot/pisky.txt /boot
+
+# Copy and install startup script
+echo Copying and enabling startup script.
+echo Please ignore the LSB warning message
+sudo cp init.d/tracker /etc/init.d
+cd /etc/init.d
+sudo chmod +x tracker
+sudo update-rc.d tracker defaults
+cd ~/pits
+
+echo DONE

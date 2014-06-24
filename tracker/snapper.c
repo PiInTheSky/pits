@@ -22,7 +22,7 @@ void *CameraLoop(void *some_void_ptr)
 	struct TGPS *GPS;
 	char *prefix;
 	//char Command[200];
-	char *filename = "/home/pi/tracker/take_pic";
+	char *filename = "/home/pi/pits/tracker/take_pic";
 	int old_mode=0;
 	FILE *fp;
 
@@ -50,7 +50,7 @@ void *CameraLoop(void *some_void_ptr)
 		{
 			if ((fp = fopen(filename, "wt")) != NULL)
 			{
-				fprintf(fp, "raspistill -v -w %d -h %d -t 2000 -ex auto -mm matrix -o /home/pi/tracker/download/%s_$1.jpg", width, height, prefix);
+				fprintf(fp, "raspistill -w %d -h %d -t 2000 -ex auto -mm matrix -o /home/pi/pits/tracker/download/%s_$1.jpg\n", width, height, prefix);
 				fclose(fp);
 				chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 				new_mode = old_mode;
