@@ -6,6 +6,7 @@ struct TConfig
 {
 	char PayloadID[16];
 	char Frequency[8];
+	int DisableMonitor;
 	speed_t TxSpeed;
 	int Camera;
 	int low_width;

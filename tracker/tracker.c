@@ -194,6 +194,8 @@ void LoadConfigFile(struct TConfig *Config)
 		printf("Frequency set to channel %s\n", Config->Frequency);
 	}
 
+	Config->DisableMonitor = ReadBoolean(fp, "disable_monitor", 0);
+
 	BaudRate = ReadInteger(fp, "baud", 1);
 	Config->TxSpeed = BaudToSpeed(BaudRate);
 	if (Config->TxSpeed == B0)
@@ -416,6 +418,11 @@ int main(void)
 	printf("=======================================\n\n");
 
 	LoadConfigFile(&Config);
+
+	if (Config.DisableMonitor)
+	{
+		system("/opt/vc/bin/tvservice -off");
+	}
 
 	GPS.Time = 0.0;
 	GPS.Longitude = 0.0;
