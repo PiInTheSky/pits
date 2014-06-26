@@ -41,7 +41,9 @@
 # 1E = .143750 | 3E = .243750 | 5E = .343750 | 7E = .443750 | 9E = .543750 | BE = .643750 | DE = .743750 | FE = - 
 # 1F = .146875 | 3F = .246875 | 5F = .346875 | 7F = .446875 | 9F = .546875 | BF = .646875 | DF = .746875 | FF = - 
 #
+echo Setting frequency of NTX2B ...
 gpio mode 0 in
 gpio mode 0 tri
 stty 4800 -cstopb cs8 opost onlcr < /dev/ttyAMA0
-echo -e "\x80wr$1" > /dev/ttyAMA0
+echo -e "\x80ch$1" > /dev/ttyAMA0
+sleep 1

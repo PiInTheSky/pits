@@ -187,6 +187,13 @@ void LoadConfigFile(struct TConfig *Config)
 	ReadString(fp, "payload", Config->PayloadID, sizeof(Config->PayloadID), 1);
 	printf ("Payload ID = '%s'\n", Config->PayloadID);
 
+	Config->Frequency[0] = '\0';
+	ReadString(fp, "frequency", Config->Frequency, sizeof(Config->Frequency), 0);
+	if (*Config->Frequency)
+	{
+		printf("Frequency set to channel %s\n", Config->Frequency);
+	}
+
 	BaudRate = ReadInteger(fp, "baud", 1);
 	Config->TxSpeed = BaudToSpeed(BaudRate);
 	if (Config->TxSpeed == B0)
@@ -218,15 +225,44 @@ void LoadConfigFile(struct TConfig *Config)
 	fclose(fp);
 }
 
+void SetFrequency(char *Frequency)
+{
+        int fd;
+	char Command[16];
+
+        fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+        if (fd >= 0)
+        {
+                tcgetattr(fd, &options);
+
+                options.c_cflag &= ~CSTOPB;
+                cfsetispeed(&options, B4800);
+                cfsetospeed(&options, B4800);
+                options.c_cflag |= CS8;
+                options.c_oflag &= ~ONLCR;
+                options.c_oflag &= ~OPOST;
+
+                tcsetattr(fd, TCSANOW, &options);
+
+		pinMode (NTX2B_ENABLE, INPUT);
+		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
+
+		sprintf(Command, "%cch%s\r", 0x80, Config.Frequency);
+		write(fd, Command, strlen(Command)); 
+
+		printf("NTX2B Now set to channel %s\n", Config.Frequency);
+
+		close(fd);
+        }
+}
+
 int OpenSerialPort(void)
 {
 	int fd;
 
-    fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
 	if (fd >= 0)
 	{
-		// fcntl(fd, F_SETFL, FNDELAY);
-
 		/* get the current options */
 		tcgetattr(fd, &options);
 
@@ -234,6 +270,7 @@ int OpenSerialPort(void)
 		options.c_lflag &= ~ECHO;
 		options.c_cc[VMIN]  = 0;
 		options.c_cc[VTIME] = 10;
+
 		options.c_cflag |= CSTOPB;
 		cfsetispeed(&options, B300);
 		cfsetospeed(&options, B300);
@@ -370,7 +407,7 @@ int main(void)
 {
 	int fd, ReturnCode, i;
 	unsigned long Sentence_Counter = 0;
-	char Sentence[100];
+	char Sentence[100], Command[100];
 	struct stat st = {0};
 	struct TGPS GPS;
 	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread, LEDThread;
@@ -379,16 +416,6 @@ int main(void)
 	printf("=======================================\n\n");
 
 	LoadConfigFile(&Config);
-
-	if (Config.Camera)
-	{
-		ReturnCode = 0;	// system("raspistill");
-		if (ReturnCode)
-		{
-			printf("Camera not connected/installed/enabled.\nPlease resolve or disable in the configuration file.\n");
-			exit(1);
-		}
-	}
 
 	GPS.Time = 0.0;
 	GPS.Longitude = 0.0;
@@ -403,7 +430,12 @@ int main(void)
 	{
 		exit (1);
 	}
-	
+
+	if (*Config.Frequency)
+	{
+		SetFrequency(Config.Frequency);
+	}
+
 	// We have 2 enable outputs
 	pinMode (NTX2B_ENABLE, OUTPUT);
 	pinMode (UBLOX_ENABLE, OUTPUT);
@@ -427,7 +459,7 @@ int main(void)
 	
 	// SPI for ADC
 	system("gpio load spi");
-	
+
 	/*
 	if (stat(SSDVFolder, &st) == -1)
 	{
@@ -484,5 +516,5 @@ int main(void)
 			SendImage();
 		}
 		
-    }
+	}
 }
