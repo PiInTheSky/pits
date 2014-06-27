@@ -31,7 +31,7 @@ void *LEDLoop(void *some_void_ptr)
 	while (1)
 	{
 		digitalWrite (LED_WARN, GPS->Satellites < 4);	
-		digitalWrite (LED_OK, Flash ^= 1);	
+		digitalWrite (LED_OK, (GPS->Altitude < 2000) && (Flash ^= 1));	
 
 		sleep(1);
 	}
