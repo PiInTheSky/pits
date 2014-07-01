@@ -518,7 +518,7 @@ int main(void)
 		
 		SendSentence(Sentence);
 		
-		for (i=0; i<Config.image_packets; i++)
+		for (i=0; i< ((GPS.Altitude > Config.high) ? Config.image_packets : 1); i++)
 		{
 			SendImage();
 		}

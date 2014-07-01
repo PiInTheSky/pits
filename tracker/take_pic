@@ -1,1 +1,1 @@
-raspistill -w 320 -h 240 -t 2000 -ex auto -mm matrix -o /home/pi/pits/tracker/download/small_$1.jpg
+raspistill -w 640 -h 480 -t 2000 -ex auto -mm matrix -o /home/pi/pits/tracker/download/medium_$1.jpg
