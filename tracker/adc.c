@@ -22,28 +22,22 @@ int AnalogRead (int chan)
 
   chanBits = 0xC0 | ((chan & 7) << 3);
 
-  spiData [0] = chanBits ;
-  spiData [1] = 0;
+  spiData[0] = chanBits ;
+  spiData[1] = 0;
   spiData[2] = 0;
 
   wiringPiSPIDataRW (0, spiData, 3) ;
 
-  return ((spiData[0] & 1) << 9) | (spiData[1] << 1) | (spiData[2] >> 7);
+  return ((spiData [0] << 7) | (spiData [1] >> 1)) & 0x3FF ;
 }
 
 double GetVoltage(int chan, double FullScale)
 {
-	int RawValue, i;
+	int RawValue;
     double Voltage;
-	int LoopCount = 1;
 
-    Voltage = 0;
-
-    for (i=0; i<LoopCount; i++)
-    {
-    	RawValue = AnalogRead(chan);
-        Voltage += (double)RawValue * FullScale / (1024.0 * LoopCount);
-    }
+   	RawValue = AnalogRead(chan);
+	Voltage = (double)RawValue * FullScale / 1024.0;
 
 	return Voltage;
 }
@@ -51,7 +45,7 @@ double GetVoltage(int chan, double FullScale)
 
 void *ADCLoop(void *some_void_ptr)
 {
-	float BatteryVoltage;
+	double BatteryVoltage;
 	FILE *fp;
 	struct TGPS *GPS;
 
@@ -66,9 +60,7 @@ void *ADCLoop(void *some_void_ptr)
 		
 	while (1)
 	{
-        // printf("Reading ADC ...\n");
-		BatteryVoltage = GetVoltage(2, 9.65);
-		// printf("Battery Voltage = %5.2lf\n", BatteryVoltage);
+		BatteryVoltage = GetVoltage(2, 6.67);
 
 		GPS->BatteryVoltage = BatteryVoltage;
 
