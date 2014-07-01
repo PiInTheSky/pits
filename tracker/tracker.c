@@ -72,7 +72,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	TimeBuffer2[7] = TimeBuffer1[5];
 	TimeBuffer2[8] = '\0';
 	
-	ExtraFields[0] = '\n';
+	ExtraFields[0] = '\0';
 	
 	if (Config.EnableBMP085)
 	{
@@ -312,16 +312,11 @@ void SendSentence(char *TxLine)
 	
 	if ((fd = OpenSerialPort()) >= 0)
 	{
-		printf("Sending ...\n");
 		write(fd, TxLine, strlen(TxLine));
 		
 		if (close(fd) < 0)
 		{
 			printf("NOT Sent - error %d\n", errno);
-		}
-		else
-		{
-			printf("Sent\n");
 		}
 	}
 	else
@@ -450,7 +445,11 @@ int main(void)
 	GPS.Satellites = 0;
 	GPS.Speed = 0.0;
 	GPS.Direction = 0.0;
-
+	GPS.InternalTemperature = 0.0;
+	GPS.BatteryVoltage = 0.0;
+	GPS.ExternalTemperature = 0.0;
+	GPS.Pressure = 0.0;
+	
 	// Set up I/O
 	if (wiringPiSetup() == -1)
 	{

@@ -85,8 +85,8 @@ void *BMP085Loop(void *some_void_ptr)
 			GPS->ExternalTemperature = bmp085GetTemperature(&bmp);
 			GPS->Pressure = bmp085GetPressure(&bmp, GPS->ExternalTemperature);
 
-			printf("Temperature is %5.2lf\n", GPS->ExternalTemperature);
-            printf("Pressure is %5.2lf\n", GPS->Pressure);
+			// printf("Temperature is %5.2lf\n", GPS->ExternalTemperature);
+			// printf("Pressure is %5.2lf\n", GPS->Pressure);
 
 			close(bmp.fd);
 		}
