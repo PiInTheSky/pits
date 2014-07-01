@@ -40,6 +40,7 @@
 #include "misc.h"
 #include "snapper.h"
 #include "led.h"
+#include "bmp085.h"
 
 struct TConfig Config;
 
@@ -58,7 +59,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
     int Count, i, j;
     unsigned char c;
     unsigned int CRC, xPolynomial;
-	char TimeBuffer1[12], TimeBuffer2[10];
+	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields[80];
 	
 	sprintf(TimeBuffer1, "%06.0f", GPS->Time);
 	TimeBuffer2[0] = TimeBuffer1[0];
@@ -71,7 +72,14 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	TimeBuffer2[7] = TimeBuffer1[5];
 	TimeBuffer2[8] = '\0';
 	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f",
+	ExtraFields[0] = '\n';
+	
+	if (Config.EnableBMP085)
+	{
+		sprintf(ExtraFields, ",%.1f,%.0f", GPS->ExternalTemperature, GPS->Pressure);
+	}
+	
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s",
             Config.PayloadID,
             SentenceCounter,
 			TimeBuffer2,
@@ -81,8 +89,9 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 			(GPS->Speed * 13) / 7,
 			GPS->Direction,
 			GPS->Satellites,            
-            GPS->Temperature,
-            GPS->BatteryVoltage);
+            GPS->InternalTemperature,
+            GPS->BatteryVoltage,
+			ExtraFields);
 
     Count = strlen(TxLine);
 
@@ -195,6 +204,16 @@ void LoadConfigFile(struct TConfig *Config)
 	}
 
 	Config->DisableMonitor = ReadBoolean(fp, "disable_monitor", 0);
+	if (Config->DisableMonitor)
+	{
+		printf("HDMI/Composite outputs will be disabled\n");
+	}
+	
+	Config->EnableBMP085 = ReadBoolean(fp, "enable_bmp085", 0);
+	if (Config->EnableBMP085)
+	{
+		printf("BMP085 Enabled\n");
+	}
 
 	BaudRate = ReadInteger(fp, "baud", 1);
 	Config->TxSpeed = BaudToSpeed(BaudRate);
@@ -412,10 +431,10 @@ int main(void)
 	char Sentence[100], Command[100];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread, LEDThread;
+	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
 
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
-	printf("=======================================\n\n");
+	printf(    "=======================================\n\n");
 
 	LoadConfigFile(&Config);
 
@@ -511,6 +530,16 @@ int main(void)
 		fprintf(stderr, "Error creating LED thread\n");
 		return 1;
 	}
+	
+	if (Config.EnableBMP085)
+	{
+		if (pthread_create(&BMP085Thread, NULL, BMP085Loop, &GPS))
+		{
+			fprintf(stderr, "Error creating BMP085 thread\n");
+			return 1;
+		}
+	}
+	
 	
 	while (1)
 	{	

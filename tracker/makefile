@@ -1,7 +1,7 @@
-tracker: tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o
-	cc -o tracker tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o -lm -lwiringPi -lwiringPiDev 
+tracker: tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o bmp085.o
+	cc -o tracker tracker.o gps.o misc.o DS18B20.o adc.o snapper.o led.o bmp085.o -lm -lwiringPi -lwiringPiDev 
 
-tracker.o: tracker.c gps.h misc.h DS18B20.h adc.h
+tracker.o: tracker.c gps.h misc.h DS18B20.h adc.h bmp085.h
 	gcc -c tracker.c
 
 gps.o: gps.c gps.h misc.h
@@ -22,4 +22,5 @@ led.o: led.c led.h misc.h
 misc.o: misc.c misc.h
 	gcc -c misc.c
 
-	
+bmp085.o: bmp085.c bmp085.h
+	gcc -c bmp085.c

@@ -53,7 +53,7 @@ void *DS18B20Loop(void *some_void_ptr)
 										value = strtok(NULL, "\n");
 										Temperature = atof(value) / 1000;
 										// printf("%5.3fC\n", Temperature);
-										GPS->Temperature = Temperature;
+										GPS->InternalTemperature = Temperature;
 									}
 								}
 							}

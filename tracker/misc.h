@@ -15,6 +15,7 @@ struct TConfig
 	int high_width;
 	int high_height;
 	int image_packets;
+	int EnableBMP085;
 };
 
 extern struct TConfig Config;
