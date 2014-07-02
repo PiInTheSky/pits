@@ -293,8 +293,8 @@ int OpenSerialPort(void)
 		options.c_cc[VTIME] = 10;
 
 		options.c_cflag |= CSTOPB;
-		cfsetispeed(&options, B300);
-		cfsetospeed(&options, B300);
+		cfsetispeed(&options, Config.TxSpeed);
+		cfsetospeed(&options, Config.TxSpeed);
 		options.c_cflag |= CS8;
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
