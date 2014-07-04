@@ -51,8 +51,6 @@ static 	uint8_t *clkMem  = NULL;
 static 	uint8_t *padsMem = NULL;
 static 	uint8_t *spi0Mem = NULL;
 
-
-
 //
 // Low level register access functions
 //
@@ -764,11 +762,12 @@ void SendUBX(struct bcm2835_i2cbb *bb, unsigned char *MSG, int len)
 	bcm8235_i2cbb_puts(bb, MSG, len);
 }
 
-void InitUBlox(struct bcm2835_i2cbb *bb)
+void SetFlightMode(struct bcm2835_i2cbb *bb)
 {
     // Send navigation configuration command
     unsigned char setNav[] = {0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00, 0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0xDC};
     SendUBX(bb, setNav, sizeof(setNav));
+	printf ("Setting flight mode\n");
 }
 
 float FixPosition(float Position)
@@ -793,50 +792,55 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
 	{
 		satellites = 0;
 	
-		if (sscanf(Buffer, "$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c", &utc_time, &latitude, &ns, &longitude, &ew, &lock, &satellites, &hdop, &altitude, &units) >= 1)
+		if (strncmp(Buffer, "$GPGGA", 6) == 0)
 		{
-			// printf("%s", Buffer);
-			// $GPGGA,124943.00,5157.01557,N,00232.66381,W,1,09,1.01,149.3,M,48.6,M,,*42
-			if (satellites >= 4)
-			{
-				GPS->Time = utc_time;
-				GPS->Latitude = FixPosition(latitude);
-				if (ns == 'S') GPS->Latitude = -GPS->Latitude;
-				GPS->Longitude = FixPosition(longitude);
-				if (ew == 'W') GPS->Longitude = -GPS->Longitude;
-				GPS->Altitude = altitude;
+			if (sscanf(Buffer, "$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c", &utc_time, &latitude, &ns, &longitude, &ew, &lock, &satellites, &hdop, &altitude, &units) >= 1)
+			{	
+				// $GPGGA,124943.00,5157.01557,N,00232.66381,W,1,09,1.01,149.3,M,48.6,M,,*42
+				if (satellites >= 4)
+				{
+					GPS->Time = utc_time;
+					GPS->Latitude = FixPosition(latitude);
+					if (ns == 'S') GPS->Latitude = -GPS->Latitude;
+					GPS->Longitude = FixPosition(longitude);
+					if (ew == 'W') GPS->Longitude = -GPS->Longitude;
+					GPS->Altitude = altitude;
+				}
+				GPS->Satellites = satellites;
 			}
-			GPS->Satellites = satellites;
 		}
-		else if (sscanf(Buffer, "$GPRMC,%f,%f,%c,%f,%c,%f,%f,%d", &utc_time, &latitude, &ns, &longitude, &ew, &speed, &course, &date) >= 1)
+		else if (strncmp(Buffer, "$GPRMC", 6) == 0)
 		{
-			// printf("%s", Buffer);
-			// $GPRMC,124943.00,A,5157.01557,N,00232.66381,W,0.039,,200314,,,A*6C
-			GPS->Speed = (int)speed;
-			GPS->Direction = (int)course;
+			if (sscanf(Buffer, "$GPRMC,%f,%f,%c,%f,%c,%f,%f,%d", &utc_time, &latitude, &ns, &longitude, &ew, &speed, &course, &date) >= 1)
+			{
+				// $GPRMC,124943.00,A,5157.01557,N,00232.66381,W,0.039,,200314,,,A*6C
+				GPS->Speed = (int)speed;
+				GPS->Direction = (int)course;
+			}
+
 		}
-        else if ((Buffer[1] == 'G') && (Buffer[2] == 'P') && (Buffer[3] == 'G') && (Buffer[4] == 'S') && (Buffer[5] == 'V'))
+		else if (strncmp(Buffer, "$GPGSV", 6) == 0)
         {
             // Disable GSV
             printf("Disabling GSV\r\n");
             unsigned char setGSV[] = { 0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x39 };
             SendUBX(bb, setGSV, sizeof(setGSV));
         }
-        else if ((Buffer[1] == 'G') && (Buffer[2] == 'P') && (Buffer[3] == 'G') && (Buffer[4] == 'L') && (Buffer[5] == 'L'))
+		else if (strncmp(Buffer, "$GPGLL", 6) == 0)
         {
             // Disable GLL
             printf("Disabling GLL\r\n");
             unsigned char setGLL[] = { 0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x2B };
             SendUBX(bb, setGLL, sizeof(setGLL));
         }
-        else if ((Buffer[1] == 'G') && (Buffer[2] == 'P') && (Buffer[3] == 'G') && (Buffer[4] == 'S') && (Buffer[5] == 'A'))
+		else if (strncmp(Buffer, "$GPGSA", 6) == 0)
         {
             // Disable GSA
             printf("Disabling GSA\r\n");
             unsigned char setGSA[] = { 0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x32 };
             SendUBX(bb, setGSA, sizeof(setGSA));
         }
-        else if ((Buffer[1] == 'G') && (Buffer[2] == 'P') && (Buffer[3] == 'V') && (Buffer[4] == 'T') && (Buffer[5] == 'G'))
+		else if (strncmp(Buffer, "$GPVTG", 6) == 0)
         {
             // Disable VTG
             printf("Disabling VTG\r\n");
@@ -845,7 +849,7 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
         }
         else
         {
-            printf("Unknown NMEA sentence %c%c%c%c%c\r\n", Buffer[1], Buffer[2], Buffer[3], Buffer[4], Buffer[5]);
+            printf("Unknown NMEA sentence: %s\n", Buffer);
         }
     }
     else
@@ -880,9 +884,9 @@ void *GPSLoop(void *some_void_ptr)
 
         bcm2835_i2cbb_start(&bb);
 
-		InitUBlox(&bb);
+		SetFlightMode(&bb);
 
-        for (i=0; i<256; i++)
+        for (i=0; i<10000; i++)
         {
             Character = bcm8235_i2cbb_getc(&bb);
 

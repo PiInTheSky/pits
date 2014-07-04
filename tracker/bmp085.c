@@ -69,8 +69,6 @@ void *BMP085Loop(void *some_void_ptr)
 
 	GPS = (struct TGPS *)some_void_ptr;
 
-	printf("**** BMP Test Program, board rev %d ****\n", piBoardRev());
-
 	// Initialise BMP085
 	if (bmp.fd = open_i2c(BMP085_ADDRESS))
 	{
