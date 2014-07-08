@@ -1,6 +1,7 @@
 #!/bin/bash
 cd /home/pi/pits/tracker
 mkdir -p download/keep
+mkdir -p keep
 echo Camera script ...
 
 i=0
@@ -18,7 +19,7 @@ do
 	sleep 15
 
 	echo Taking photo for storage
-	raspistill -w 2592 -h 1944 -v -t 1000 -ex auto -mm matrix -o keep/flight$1.jpg
+	raspistill -w 2592 -h 1944 -v -t 1000 -ex auto -mm matrix -o keep/flight${i}.jpg
 
 	echo sleeping ...
 	sleep 15
