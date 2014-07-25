@@ -1,4 +1,6 @@
-payload=PISKY
+payload=PI_SKY
+disable_monitor=Y
+# frequency=80
 baud=300
 camera=1
 low_width=320
@@ -6,4 +8,5 @@ low_height=240
 high=2000
 high_width=640
 high_height=480
-image_packets=4
+image_packets=6
+enable_bmp085=N
