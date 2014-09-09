@@ -19,7 +19,7 @@ do
 	sleep 15
 
 	echo Taking photo for storage
-	raspistill -w 2592 -h 1944 -v -t 1000 -ex auto -mm matrix -o keep/flight${i}.jpg
+	raspistill -w 2592 -h 1944 -v -t 3000 -ex auto -mm matrix -o keep/flight${i}.jpg
 
 	echo sleeping ...
 	sleep 15
