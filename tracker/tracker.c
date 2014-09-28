@@ -131,6 +131,8 @@ void ReadString(FILE *fp, char *keyword, char *Result, int Length, int NeedValue
 
 	while (fgets(line, sizeof(line), fp) != NULL)
 	{
+		line[strcspn(line, "\r")] = '\0';			// Ignore any CR (in case someone has edited the file from Windows with notepad)
+		
 		token = strtok(line, "=");
 		if (strcmp(keyword, token) == 0)
 		{
@@ -163,6 +165,15 @@ int ReadBoolean(FILE *fp, char *keyword, int NeedValue)
 	ReadString(fp, keyword, Temp, sizeof(Temp), NeedValue);
 
 	return (*Temp == '1') || (*Temp == 'Y') || (*Temp == 'y');
+}
+
+int ReadBooleanFromString(FILE *fp, char *keyword, char *searchword)
+{
+	char Temp[100];
+
+	ReadString(fp, keyword, Temp, sizeof(Temp), 0);
+
+	if (strcasestr(Temp, searchword)) return 1; else return 0;
 }
 
 speed_t BaudToSpeed(int baud)
@@ -208,6 +219,12 @@ void LoadConfigFile(struct TConfig *Config)
 	{
 		printf("HDMI/Composite outputs will be disabled\n");
 	}
+	
+	Config->EnableGPSLogging = ReadBooleanFromString(fp, "logging", "GPS");
+	if (Config->EnableGPSLogging) printf("GPS Logging enabled\n");
+
+	Config->EnableTelemetryLogging = ReadBooleanFromString(fp, "logging", "Telemetry");
+	if (Config->EnableTelemetryLogging) printf("Telemetry Logging enabled\n");
 	
 	Config->EnableBMP085 = ReadBoolean(fp, "enable_bmp085", 0);
 	if (Config->EnableBMP085)
@@ -317,6 +334,11 @@ void SendSentence(char *TxLine)
 		if (close(fd) < 0)
 		{
 			printf("NOT Sent - error %d\n", errno);
+		}
+		
+		if (Config.EnableTelemetryLogging)
+		{
+			WriteLog("telemetry.txt", TxLine);
 		}
 	}
 	else

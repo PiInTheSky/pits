@@ -48,14 +48,16 @@ short open_i2c(int address)
 
 	sprintf(i2c_dev, "/dev/i2c-%d", piBoardRev()-1);
 
-        if ((fd = open(i2c_dev, O_RDWR)) < 0) {                                        // Open port for reading and writing
-                printf("Failed to open i2c port\n");
-                exit(1);
-        }
+	if ((fd = open(i2c_dev, O_RDWR)) < 0)
+	{                                        // Open port for reading and writing
+		printf("Failed to open i2c port\n");
+		return 0;
+	}
 
-        if (ioctl(fd, I2C_SLAVE, address) < 0) {                                 // Set the port options and set the address of the device we wish to speak to
-                printf("Unable to get bus access to talk to slave on address %02Xh\n", address);
-                return 0;
+	if (ioctl(fd, I2C_SLAVE, address) < 0)                                 // Set the port options and set the address of the device we wish to speak to
+	{
+		printf("Unable to get bus access to talk to slave on address %02Xh\n", address);
+		return 0;
 	}
 
 	return fd;
@@ -74,6 +76,10 @@ void *BMP085Loop(void *some_void_ptr)
 	{
 		bmp085Calibration(&bmp);
 		close(bmp.fd);
+	}
+	else
+	{
+		return 0;
 	}
 	
 	while (1)

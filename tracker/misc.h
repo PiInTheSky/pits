@@ -16,8 +16,11 @@ struct TConfig
 	int high_height;
 	int image_packets;
 	int EnableBMP085;
+	int EnableGPSLogging;
+	int EnableTelemetryLogging;
 };
 
 extern struct TConfig Config;
 
 char Hex(char Character);
+void WriteLog(char *FileName, char *Buffer);

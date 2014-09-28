@@ -9,4 +9,5 @@ high=2000
 high_width=640
 high_height=480
 image_packets=6
-enable_bmp085=N
+enable_bmp085=Y
+logging=GPS,Telemetry

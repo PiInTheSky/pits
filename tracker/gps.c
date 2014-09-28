@@ -27,7 +27,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include "bcm2835.h"  //http://www.open.com.au/mikem/bcm2835/
-
+#include "misc.h"
 #include "gps.h"
 
 struct bcm2835_i2cbb {
@@ -808,6 +808,10 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
 				}
 				GPS->Satellites = satellites;
 			}
+			if (Config.EnableGPSLogging)
+			{
+				WriteLog("gps.txt", Buffer);
+			}
 		}
 		else if (strncmp(Buffer, "$GPRMC", 6) == 0)
 		{
@@ -818,6 +822,10 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
 				GPS->Direction = (int)course;
 			}
 
+			if (Config.EnableGPSLogging)
+			{
+				WriteLog("gps.txt", Buffer);
+			}
 		}
 		else if (strncmp(Buffer, "$GPGSV", 6) == 0)
         {
