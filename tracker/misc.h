@@ -18,6 +18,8 @@ struct TConfig
 	int EnableBMP085;
 	int EnableGPSLogging;
 	int EnableTelemetryLogging;
+	int LED_OK;
+	int LED_Warn;
 };
 
 extern struct TConfig Config;

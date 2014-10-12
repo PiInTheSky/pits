@@ -12,9 +12,7 @@
 #include <wiringPi.h>
 
 #include "gps.h"
-
-#define LED_WARN		11
-#define LED_OK			4
+#include "misc.h"
 
 
 void *LEDLoop(void *some_void_ptr)
@@ -25,13 +23,13 @@ void *LEDLoop(void *some_void_ptr)
 	GPS = (struct TGPS *)some_void_ptr;
 
 	// We have 2 LED outputs
-	pinMode (LED_WARN, OUTPUT);
-	pinMode (LED_OK, OUTPUT);
+	pinMode (Config.LED_Warn, OUTPUT);
+	pinMode (Config.LED_OK, OUTPUT);
 	
 	while (1)
 	{
-		digitalWrite (LED_WARN, GPS->Satellites < 4);	
-		digitalWrite (LED_OK, (GPS->Satellites >= 4) && (GPS->Altitude < 2000) && (Flash ^= 1));	
+		digitalWrite (Config.LED_Warn, GPS->Satellites < 4);	
+		digitalWrite (Config.LED_OK, (GPS->Satellites >= 4) && (GPS->Altitude < 2000) && (Flash ^= 1));	
 
 		sleep(1);
 	}

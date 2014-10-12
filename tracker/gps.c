@@ -1,4 +1,5 @@
 /* ========================================================================== */
+/*   gps.c  Modified from:                                                    */
 /*                                                                            */
 /*   bcm2835.c                                                                */ 
 /*   For Raspberry Pi August 2012                                             */
@@ -9,6 +10,10 @@
 /*   There is much more control over the bus using this method and any pins   */
 /*   can be used. The reason for this file is that the BCM hardware does      */
 /*   not appear to support clock stretch                                      */  
+/*                                                                            */
+/*   12/10/14: Modified for the UBlox Max8 on the B+ board                    */
+/*                                                                            */
+/*                                                                            */
 /* ========================================================================== */
 // Version 0.1 7/9/2012
 // * removed a line of debug code
@@ -792,9 +797,9 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
 	{
 		satellites = 0;
 	
-		if (strncmp(Buffer, "$GPGGA", 6) == 0)
+		if (strncmp(Buffer+3, "GGA", 3) == 0)
 		{
-			if (sscanf(Buffer, "$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f,%c", &utc_time, &latitude, &ns, &longitude, &ew, &lock, &satellites, &hdop, &altitude, &units) >= 1)
+			if (sscanf(Buffer+7, "%f,%f,%c,%f,%c,%d,%d,%f,%f,%c", &utc_time, &latitude, &ns, &longitude, &ew, &lock, &satellites, &hdop, &altitude, &units) >= 1)
 			{	
 				// $GPGGA,124943.00,5157.01557,N,00232.66381,W,1,09,1.01,149.3,M,48.6,M,,*42
 				if (satellites >= 4)
@@ -813,9 +818,9 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
 				WriteLog("gps.txt", Buffer);
 			}
 		}
-		else if (strncmp(Buffer, "$GPRMC", 6) == 0)
+		else if (strncmp(Buffer+3, "RMC", 3) == 0)
 		{
-			if (sscanf(Buffer, "$GPRMC,%f,%f,%c,%f,%c,%f,%f,%d", &utc_time, &latitude, &ns, &longitude, &ew, &speed, &course, &date) >= 1)
+			if (sscanf(Buffer+7, "%f,%f,%c,%f,%c,%f,%f,%d", &utc_time, &latitude, &ns, &longitude, &ew, &speed, &course, &date) >= 1)
 			{
 				// $GPRMC,124943.00,A,5157.01557,N,00232.66381,W,0.039,,200314,,,A*6C
 				GPS->Speed = (int)speed;
@@ -827,28 +832,28 @@ void ProcessLine(struct bcm2835_i2cbb *bb, struct TGPS *GPS, char *Buffer, int C
 				WriteLog("gps.txt", Buffer);
 			}
 		}
-		else if (strncmp(Buffer, "$GPGSV", 6) == 0)
+		else if (strncmp(Buffer+3, "GSV", 3) == 0)
         {
             // Disable GSV
             printf("Disabling GSV\r\n");
             unsigned char setGSV[] = { 0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x39 };
             SendUBX(bb, setGSV, sizeof(setGSV));
         }
-		else if (strncmp(Buffer, "$GPGLL", 6) == 0)
+		else if (strncmp(Buffer+3, "GLL", 3) == 0)
         {
             // Disable GLL
             printf("Disabling GLL\r\n");
             unsigned char setGLL[] = { 0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x2B };
             SendUBX(bb, setGLL, sizeof(setGLL));
         }
-		else if (strncmp(Buffer, "$GPGSA", 6) == 0)
+		else if (strncmp(Buffer+3, "GSA", 3) == 0)
         {
             // Disable GSA
             printf("Disabling GSA\r\n");
             unsigned char setGSA[] = { 0xB5, 0x62, 0x06, 0x01, 0x08, 0x00, 0xF0, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x32 };
             SendUBX(bb, setGSA, sizeof(setGSA));
         }
-		else if (strncmp(Buffer, "$GPVTG", 6) == 0)
+		else if (strncmp(Buffer+3, "VTG", 3) == 0)
         {
             // Disable VTG
             printf("Disabling VTG\r\n");

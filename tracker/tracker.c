@@ -11,10 +11,10 @@
 | 3 - Reads the current battery voltage                             |
 | 4 - Reads the current GPS position                                |
 | 5 - Builds a telemetry sentence to transmit                       |
-| 6 - Sends it to the NTX2B radio transmitteR                       |
+| 6 - Sends it to the MTX2/NTX2B radio transmitteR                  |
 | 7 - repeats steps 2-6                                             |
 |                                                                   |
-| Usual disclaimer bullshit goes here                               |
+| 12/10/14 - Modifications for Pi+ board                            |
 |                                                                   |
 \------------------------------------------------------------------*/
 
@@ -263,35 +263,88 @@ void LoadConfigFile(struct TConfig *Config)
 	fclose(fp);
 }
 
-void SetFrequency(char *Frequency)
+void SetMTX2Frequency(char *Frequency)
 {
-        int fd;
-	char Command[16];
+	float _mtx2comp;
+	int _mtx2int;
+	long _mtx2fractional;
+	char _mtx2command[17];
+	int fd;
 
-        fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
-        if (fd >= 0)
-        {
-                tcgetattr(fd, &options);
+	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	if (fd >= 0)
+	{
+		tcgetattr(fd, &options);
 
-                options.c_cflag &= ~CSTOPB;
-                cfsetispeed(&options, B4800);
-                cfsetospeed(&options, B4800);
-                options.c_cflag |= CS8;
-                options.c_oflag &= ~ONLCR;
-                options.c_oflag &= ~OPOST;
+		options.c_cflag &= ~CSTOPB;
+		cfsetispeed(&options, B9600);
+		cfsetospeed(&options, B9600);
+		options.c_cflag |= CS8;
+		options.c_oflag &= ~ONLCR;
+		options.c_oflag &= ~OPOST;
 
-                tcsetattr(fd, TCSANOW, &options);
+		tcsetattr(fd, TCSANOW, &options);
 
 		pinMode (NTX2B_ENABLE, INPUT);
 		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
+		
+		_mtx2comp=(atof(Frequency)+0.0015)/6.5;
+		_mtx2int=_mtx2comp;
+		_mtx2fractional = ((_mtx2comp-_mtx2int)+1) * 524288;
+		snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
+		// delay(100);
+		write(fd, _mtx2command, strlen(_mtx2command)); 
+		// MTX2_EN.print(_mtx2command);
+		// delay(50);
 
+		printf("MTX2 transmitter now set to channel %s\n", Config.Frequency);
+
+		close(fd);
+	}
+}
+
+
+void SetNTX2BFrequency(char *Frequency)
+{
+	int fd;
+	char Command[16];
+
+	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	if (fd >= 0)
+	{
+		tcgetattr(fd, &options);
+
+		options.c_cflag &= ~CSTOPB;
+		cfsetispeed(&options, B4800);
+		cfsetospeed(&options, B4800);
+		options.c_cflag |= CS8;
+		options.c_oflag &= ~ONLCR;
+		options.c_oflag &= ~OPOST;
+
+		tcsetattr(fd, TCSANOW, &options);
+
+		pinMode (NTX2B_ENABLE, INPUT);
+		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
+		
 		sprintf(Command, "%cch%s\r", 0x80, Config.Frequency);
 		write(fd, Command, strlen(Command)); 
 
-		printf("NTX2B Now set to channel %s\n", Config.Frequency);
+		printf("NTX2 transmitter now set to channel %s\n", Config.Frequency);
 
 		close(fd);
-        }
+	}
+}
+
+void SetFrequency(char *Frequency)
+{
+	if (NewBoard())
+	{
+		SetMTX2Frequency(Frequency);
+	}
+	else
+	{
+		SetNTX2BFrequency(Frequency);
+	}
 }
 
 int OpenSerialPort(void)
@@ -453,6 +506,19 @@ int main(void)
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
 
+	if (NewBoard())
+	{
+		printf("RPi Model B+\n\n");
+		Config.LED_OK = 25;
+		Config.LED_Warn = 24;
+	}
+	else
+	{
+		printf("RPi Model A or B\n\n");
+		Config.LED_OK = 4;
+		Config.LED_Warn = 11;
+	}
+	
 	LoadConfigFile(&Config);
 
 	if (Config.DisableMonitor)
