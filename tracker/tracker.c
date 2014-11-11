@@ -292,6 +292,10 @@ void SetMTX2Frequency(char *Frequency)
 	char _mtx2command[17];
 	int fd;
 
+	pinMode (NTX2B_ENABLE, OUTPUT);
+	digitalWrite (NTX2B_ENABLE, 1);
+	delayMilliseconds (100);
+	
 	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
 	if (fd >= 0)
 	{
@@ -313,10 +317,7 @@ void SetMTX2Frequency(char *Frequency)
 		_mtx2int=_mtx2comp;
 		_mtx2fractional = ((_mtx2comp-_mtx2int)+1) * 524288;
 		snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
-		// delay(100);
 		write(fd, _mtx2command, strlen(_mtx2command)); 
-		// MTX2_EN.print(_mtx2command);
-		// delay(50);
 
 		printf("MTX2 transmitter now set to channel %s\n", Config.Frequency);
 

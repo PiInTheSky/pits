@@ -5,3 +5,4 @@ sudo modprobe w1_therm
 sudo modprobe i2c-dev
 ./camera &
 sudo ./tracker
+
