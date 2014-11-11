@@ -12,6 +12,7 @@ struct TGPS
 	float BatteryVoltage;
 	float ExternalTemperature;
 	float Pressure;
+	float BoardCurrent;
 } GPS;
 
 

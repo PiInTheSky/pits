@@ -20,6 +20,8 @@ struct TConfig
 	int EnableTelemetryLogging;
 	int LED_OK;
 	int LED_Warn;
+	int SDA;
+	int SCL;
 };
 
 extern struct TConfig Config;

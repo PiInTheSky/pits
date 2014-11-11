@@ -882,7 +882,7 @@ void *GPSLoop(void *some_void_ptr)
 
 	GPS = (struct TGPS *)some_void_ptr;
 	
-	if (bcm2835_i2cbb_open(&bb,0x42, 24, 25, 250,100000))		// struct, i2c address, SDA, SCL, ?, ?
+	if (bcm2835_i2cbb_open(&bb, 0x42, Config.SDA, Config.SCL, 250,100000))		// struct, i2c address, SDA, SCL, ?, ?
 	{
 		printf("Failed to open I2C\n");
 		exit(1);

@@ -14,7 +14,8 @@
 | 6 - Sends it to the MTX2/NTX2B radio transmitteR                  |
 | 7 - repeats steps 2-6                                             |
 |                                                                   |
-| 12/10/14 - Modifications for Pi+ board                            |
+| 12/10/14 - Modifications for PITS+ V0.7 board and B+              |
+| 11/11/14 - Modifications for PITS+ V2.0 board and A+/B+           |
 |                                                                   |
 \------------------------------------------------------------------*/
 
@@ -59,7 +60,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
     int Count, i, j;
     unsigned char c;
     unsigned int CRC, xPolynomial;
-	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields[80];
+	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20];
 	
 	sprintf(TimeBuffer1, "%06.0f", GPS->Time);
 	TimeBuffer2[0] = TimeBuffer1[0];
@@ -72,11 +73,17 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	TimeBuffer2[7] = TimeBuffer1[5];
 	TimeBuffer2[8] = '\0';
 	
-	ExtraFields[0] = '\0';
+	ExtraFields1[0] = '\0';
+	ExtraFields2[0] = '\0';
+	
+	if (NewBoard())
+	{
+		sprintf(ExtraFields1, ",%.0f", GPS->BoardCurrent * 1000);
+	}
 	
 	if (Config.EnableBMP085)
 	{
-		sprintf(ExtraFields, ",%.1f,%.0f", GPS->ExternalTemperature, GPS->Pressure);
+		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->ExternalTemperature, GPS->Pressure);
 	}
 	
     sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s",
@@ -91,7 +98,8 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 			GPS->Satellites,            
             GPS->InternalTemperature,
             GPS->BatteryVoltage,
-			ExtraFields);
+			ExtraFields1,
+			ExtraFields2);
 
     Count = strlen(TxLine);
 
@@ -259,6 +267,19 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->image_packets = ReadInteger(fp, "image_packets", 0);
 		printf ("1 Telemetry packet every %d image packets\n", Config->image_packets);
 	}
+	
+	if (ReadInteger(fp, "SDA", 0))
+	{
+		printf ("I2C SDA overridden to %d\n", Config->SDA);
+		Config->SDA = ReadInteger(fp, "SDA", 0);
+	}
+
+	if (ReadInteger(fp, "SCL", 0))
+	{
+		printf ("I2C SCL overridden to %d\n", Config->SCL);
+		Config->SCL = ReadInteger(fp, "SCL", 0);
+	}
+
 	
 	fclose(fp);
 }
@@ -508,15 +529,23 @@ int main(void)
 
 	if (NewBoard())
 	{
-		printf("RPi Model B+\n\n");
+		printf("RPi Model A+ or B+\n\n");
+		
 		Config.LED_OK = 25;
 		Config.LED_Warn = 24;
+		
+		Config.SDA = 27;
+		Config.SCL = 22;
 	}
 	else
 	{
 		printf("RPi Model A or B\n\n");
+
 		Config.LED_OK = 4;
 		Config.LED_Warn = 11;
+		
+		Config.SDA = 24;
+		Config.SCL = 25;
 	}
 	
 	LoadConfigFile(&Config);

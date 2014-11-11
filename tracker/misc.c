@@ -39,7 +39,7 @@ int NewBoard(void)
 			if (strncmp (line, "Revision", 8) == 0)
 			{
 				printf ("RPi %s", line);
-				boardRev = strstr(line, "0010") != NULL;
+				boardRev = ((strstr(line, "0010") != NULL) || (strstr(line, "0012") != NULL));	// B+ or A+
 			}
 		}
 	}

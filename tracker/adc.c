@@ -20,7 +20,7 @@ int AnalogRead (int chan)
   unsigned char spiData [3] ;
   unsigned char chanBits ;
 
-  chanBits = 0xC0 | ((chan & 7) << 3);
+  chanBits = 0xC0 | ((chan & 1) << 5);
 
   spiData[0] = chanBits ;
   spiData[1] = 0;
@@ -31,7 +31,7 @@ int AnalogRead (int chan)
   return ((spiData [0] << 7) | (spiData [1] >> 1)) & 0x3FF ;
 }
 
-double GetVoltage(int chan, double FullScale)
+double ReadADC(int chan, double FullScale)
 {
 	int RawValue;
     double Voltage;
@@ -45,7 +45,7 @@ double GetVoltage(int chan, double FullScale)
 
 void *ADCLoop(void *some_void_ptr)
 {
-	double BatteryVoltage;
+	double BatteryVoltage, BoardCurrent;
 	FILE *fp;
 	struct TGPS *GPS;
 
@@ -60,9 +60,16 @@ void *ADCLoop(void *some_void_ptr)
 		
 	while (1)
 	{
-		BatteryVoltage = GetVoltage(2, 6.67);
-
+		BatteryVoltage = ReadADC(0, 6.67);
 		GPS->BatteryVoltage = BatteryVoltage;
+		// printf("BatteryVoltage = %lf\n", BatteryVoltage);
+
+		if (NewBoard())
+		{
+			BoardCurrent = ReadADC(1, 14);
+			GPS->BoardCurrent = BoardCurrent;
+			// printf("Current = %lf\n", BoardCurrent);
+		}
 
 		sleep(10);
 	}
