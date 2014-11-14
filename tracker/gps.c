@@ -414,17 +414,21 @@ void bcm2835_i2cbb_bitdelay(uint32_t del)
 // puts clock line high and checks that it does go high. When bit level
 // stretching is used the clock needs checking at each transition
 // *****************************************************************************
-void bcm2835_i2cbb_sclH(struct bcm2835_i2cbb *bb)
+int bcm2835_i2cbb_sclH(struct bcm2835_i2cbb *bb)
 {
     uint32_t to = bb->timeout;
     bcm2835_gpio_fsel(bb->scl, BCM2835_GPIO_FSEL_INPT); // high
     // check that it is high
-    while(!bcm2835_gpio_lev(bb->scl)) {
+    while(!bcm2835_gpio_lev(bb->scl))
+	{
+		/*
         if(!to--) {
             fprintf(stderr, "bcm2835_i2cbb: Clock line held by slave\n");
-            exit(1);
+            return (1);
         }
+		*/
     }
+    return (0);
 }
 // *****************************************************************************
 // other line conditions
@@ -882,7 +886,7 @@ void *GPSLoop(void *some_void_ptr)
 
 	GPS = (struct TGPS *)some_void_ptr;
 	
-	if (bcm2835_i2cbb_open(&bb, 0x42, Config.SDA, Config.SCL, 250,100000))		// struct, i2c address, SDA, SCL, ?, ?
+	if (bcm2835_i2cbb_open(&bb, 0x42, Config.SDA, Config.SCL, 250, 1000000))		// struct, i2c address, SDA, SCL, ?, ?
 	{
 		printf("Failed to open I2C\n");
 		exit(1);
