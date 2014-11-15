@@ -126,7 +126,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	TxLine[Count++] = '\n';  
 	TxLine[Count++] = '\0';  
 
-    printf("\n%s\n", TxLine);
+    printf("%s", TxLine);
 }
 
 

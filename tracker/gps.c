@@ -41,6 +41,7 @@ struct bcm2835_i2cbb {
     uint8_t scl; // clock
     uint32_t clock_delay; // proporional to bus speed
     uint32_t timeout; //
+	int Failed;
 };
 
 static volatile uint32_t *gpio = MAP_FAILED;
@@ -384,6 +385,7 @@ int bcm2835_i2cbb_open(struct bcm2835_i2cbb *bb,
     bb->scl = clock;
     bb->clock_delay = speed;
     bb->timeout = timeout;
+	bb->Failed = 0;
     if (!bcm2835_init())  {
 	    fprintf(stderr, "bcm2835_i2cbb: Unable to open: %s\n", strerror(errno)) ;
     	return 1;
@@ -414,21 +416,20 @@ void bcm2835_i2cbb_bitdelay(uint32_t del)
 // puts clock line high and checks that it does go high. When bit level
 // stretching is used the clock needs checking at each transition
 // *****************************************************************************
-int bcm2835_i2cbb_sclH(struct bcm2835_i2cbb *bb)
+void bcm2835_i2cbb_sclH(struct bcm2835_i2cbb *bb)
 {
     uint32_t to = bb->timeout;
     bcm2835_gpio_fsel(bb->scl, BCM2835_GPIO_FSEL_INPT); // high
     // check that it is high
     while(!bcm2835_gpio_lev(bb->scl))
 	{
-		/*
-        if(!to--) {
+        if(!to--)
+		{
             fprintf(stderr, "bcm2835_i2cbb: Clock line held by slave\n");
-            return (1);
+			bb->Failed = 1;
+			return;
         }
-		*/
     }
-    return (0);
 }
 // *****************************************************************************
 // other line conditions
@@ -886,12 +887,6 @@ void *GPSLoop(void *some_void_ptr)
 
 	GPS = (struct TGPS *)some_void_ptr;
 	
-	if (bcm2835_i2cbb_open(&bb, 0x42, Config.SDA, Config.SCL, 250, 1000000))		// struct, i2c address, SDA, SCL, ?, ?
-	{
-		printf("Failed to open I2C\n");
-		exit(1);
-	}
-
 	Length = 0;
 
     while (1)
@@ -899,11 +894,17 @@ void *GPSLoop(void *some_void_ptr)
         int i;
 		unsigned char Character;
 
+		if (bcm2835_i2cbb_open(&bb, 0x42, Config.SDA, Config.SCL, 250, 1000000))		// struct, i2c address, SDA, SCL, ?, ?
+		{
+			printf("Failed to open I2C\n");
+			exit(1);
+		}
+	
         bcm2835_i2cbb_start(&bb);
 
 		SetFlightMode(&bb);
 
-        for (i=0; i<10000; i++)
+        for (i=0; (i<10000) && (!bb.Failed); i++)
         {
             Character = bcm8235_i2cbb_getc(&bb);
 
