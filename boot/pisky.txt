@@ -1,7 +1,7 @@
 payload=PI_SKY_PLUS
-disable_monitor=Y
-# frequency=80
-frequency=434.600
+disable_monitor=N
+#frequency=80
+frequency=434.450
 baud=300
 camera=1
 low_width=320

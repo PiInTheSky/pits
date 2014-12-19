@@ -16,7 +16,6 @@
 |                                                                   |
 | 12/10/14 - Modifications for PITS+ V0.7 board and B+              |
 | 11/11/14 - Modifications for PITS+ V2.0 board and A+/B+           |
-| 19/12/14 - New GPS code.  Frequency calcs.  Image filenames       |
 |                                                                   |
 \------------------------------------------------------------------*/
 
@@ -54,6 +53,7 @@ FILE *ImageFP;
 int Records, FileNumber;
 struct termios options;
 char *SSDVFolder="/home/pi/pits/tracker/download";
+char *SavedImageFolder="/home/pi/pits/tracker/download/keep";
  
 void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
@@ -217,6 +217,10 @@ void LoadConfigFile(struct TConfig *Config)
 
 	Config->Frequency[0] = '\0';
 	ReadString(fp, "frequency", Config->Frequency, sizeof(Config->Frequency), 0);
+	if (*Config->Frequency)
+	{
+		printf("Frequency set to channel %s\n", Config->Frequency);
+	}
 
 	Config->DisableMonitor = ReadBoolean(fp, "disable_monitor", 0);
 	if (Config->DisableMonitor)
@@ -266,31 +270,30 @@ void LoadConfigFile(struct TConfig *Config)
 	
 	if (ReadInteger(fp, "SDA", 0))
 	{
-		Config->SDA = ReadInteger(fp, "SDA", 0);
 		printf ("I2C SDA overridden to %d\n", Config->SDA);
+		Config->SDA = ReadInteger(fp, "SDA", 0);
 	}
 
 	if (ReadInteger(fp, "SCL", 0))
 	{
-		Config->SCL = ReadInteger(fp, "SCL", 0);
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
+		Config->SCL = ReadInteger(fp, "SCL", 0);
 	}
 
 	
 	fclose(fp);
 }
 
-void SetMTX2Frequency(char *FrequencyString)
+void SetMTX2Frequency(char *Frequency)
 {
 	float _mtx2comp;
 	int _mtx2int;
 	long _mtx2fractional;
 	char _mtx2command[17];
 	int fd;
-	double Frequency;
 
 	pinMode (NTX2B_ENABLE, OUTPUT);
-	digitalWrite (NTX2B_ENABLE, 0);
+	digitalWrite (NTX2B_ENABLE, 1);
 	delayMilliseconds (100);
 	
 	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
@@ -307,40 +310,25 @@ void SetMTX2Frequency(char *FrequencyString)
 
 		tcsetattr(fd, TCSANOW, &options);
 
-		delayMilliseconds (100);
 		pinMode (NTX2B_ENABLE, INPUT);
 		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-		delayMilliseconds (100);
 		
-		if (strlen(FrequencyString) < 3)
-		{
-			// Convert channel number to frequency
-			Frequency = strtol(FrequencyString, NULL, 16) * 0.003125 + 434.05;
-		}
-		else
-		{
-			Frequency = atof(FrequencyString);
-		}
-		
-		printf("Frequency set to %8.4fMHz\n", Frequency);
-		
-		_mtx2comp=(Frequency+0.0015)/6.5;
+		_mtx2comp=(atof(Frequency)+0.0015)/6.5;
 		_mtx2int=_mtx2comp;
 		_mtx2fractional = ((_mtx2comp-_mtx2int)+1) * 524288;
 		snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
 		write(fd, _mtx2command, strlen(_mtx2command)); 
 
-		delayMilliseconds (100);
-		printf("MTX2 command  is %s\n", _mtx2command);
+		printf("MTX2 transmitter now set to channel %s\n", Config.Frequency);
 
 		close(fd);
 	}
 }
 
 
-void SetNTX2BFrequency(char *FrequencyString)
+void SetNTX2BFrequency(char *Frequency)
 {
-	int fd, Frequency;
+	int fd;
 	char Command[16];
 
 	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
@@ -359,22 +347,11 @@ void SetNTX2BFrequency(char *FrequencyString)
 
 		pinMode (NTX2B_ENABLE, INPUT);
 		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-
-		if (strlen(FrequencyString) < 3)
-		{
-			// Already a channel number
-			Frequency = strtol(FrequencyString, NULL, 16);
-		}
-		else
-		{
-			// Convert from MHz to channel number
-			Frequency = (int)((atof(FrequencyString) - 434.05) / 0.003124);
-		}
 		
-		sprintf(Command, "%cch%02X\r", 0x80, Frequency);
+		sprintf(Command, "%cch%s\r", 0x80, Config.Frequency);
 		write(fd, Command, strlen(Command)); 
 
-		printf("NTX2B-FA transmitter now set to channel %02Xh which is %8.4lfMHz\n", Frequency, (double)(Frequency) * 0.003125 + 434.05);
+		printf("NTX2 transmitter now set to channel %s\n", Config.Frequency);
 
 		close(fd);
 	}
@@ -479,10 +456,6 @@ int FindAndConvertImage(void)
 
 	if (LargestFileSize > 0)
 	{
-		char Date[20], SavedImageFolder[100];
-		time_t now;
-		struct tm *t;
-	
 		printf("Found file %s to convert\n", LargestFileName);
 		
 		// Now convert the file
@@ -492,16 +465,6 @@ int FindAndConvertImage(void)
 		system(CommandLine);
 		
 		// And move those pesky image files
-		now = time(NULL);
-		t = localtime(&now);
-		strftime(Date, sizeof(Date)-1, "%d_%m_%Y", t);		
-
-		sprintf(SavedImageFolder, "%s/%s", SSDVFolder, Date);
-		if (stat(SavedImageFolder, &st) == -1)
-		{
-			mkdir(SavedImageFolder, 0777);
-		}
-		system(CommandLine);
 		sprintf(CommandLine, "mv %s/*.jpg %s", SSDVFolder, SavedImageFolder);
 		system(CommandLine);
 
@@ -572,8 +535,8 @@ int main(void)
 		Config.LED_OK = 25;
 		Config.LED_Warn = 24;
 		
-		Config.SDA = 2;
-		Config.SCL = 3;
+		Config.SDA = 27;
+		Config.SCL = 22;
 	}
 	else
 	{
@@ -582,8 +545,8 @@ int main(void)
 		Config.LED_OK = 4;
 		Config.LED_Warn = 11;
 		
-		Config.SDA = 5;
-		Config.SCL = 6;
+		Config.SDA = 24;
+		Config.SCL = 25;
 	}
 	
 	LoadConfigFile(&Config);
@@ -616,16 +579,15 @@ int main(void)
 		SetFrequency(Config.Frequency);
 	}
 
-	// Switch on the radio
+	// We have 2 enable outputs
 	pinMode (NTX2B_ENABLE, OUTPUT);
-	digitalWrite (NTX2B_ENABLE, 1);
+	pinMode (UBLOX_ENABLE, OUTPUT);
 	
 	// Switch on the GPS
-	if (!NewBoard())
-	{
-		pinMode (UBLOX_ENABLE, OUTPUT);
-		digitalWrite (UBLOX_ENABLE, 0);
-	}
+	digitalWrite (UBLOX_ENABLE, 0);
+	
+	// Switch on the radio
+	digitalWrite (NTX2B_ENABLE, 1);
 	
 	if ((fd = OpenSerialPort()) < 0)
 	{
@@ -641,17 +603,24 @@ int main(void)
 	// SPI for ADC
 	system("gpio load spi");
 
+	/*
 	if (stat(SSDVFolder, &st) == -1)
 	{
 		mkdir(SSDVFolder, 0700);
 	}	
+
+	if (stat(SavedImageFolder, &st) == -1)
+	{
+		mkdir(SavedImageFolder, 0700);
+	}
+	*/
 
 	if (pthread_create(&GPSThread, NULL, GPSLoop, &GPS))
 	{
 		fprintf(stderr, "Error creating GPS thread\n");
 		return 1;
 	}
-
+	
 	if (pthread_create(&DS18B20Thread, NULL, DS18B20Loop, &GPS))
 	{
 		fprintf(stderr, "Error creating DS18B20s thread\n");
@@ -687,7 +656,8 @@ int main(void)
 			return 1;
 		}
 	}
-		
+	
+	
 	while (1)
 	{	
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
@@ -698,5 +668,6 @@ int main(void)
 		{
 			SendImage();
 		}
+		
 	}
 }

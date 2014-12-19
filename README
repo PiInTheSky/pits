@@ -14,8 +14,17 @@ INSTALLING
 
 Follow the instructions at http://www.daveakerman.com/?page_id=1569
 
-TODO
+CHANGE LOG
 
-* Remove hard-coded paths
-* More configuration options
+19/12/2014
+
+- GPS code completely re-written to use WiringPi library instead of bcm library
+- default configuration now leaves the monitor on, to ease development
+- As the PITS+ boards are set by frequency in MHz, but the earlier board was
+  set by channel number, the code now accepts either "frequency=nn" for channel
+  number, of frequency=xxx.xxxMHz for actual frequency.  Not that using the
+  second form does not give you more options on the older board - the frequency
+  will be set to the closest channnel.
+- Camera filenames are now the system time
+- Camera images are now saved in dated folders
 
