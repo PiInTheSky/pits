@@ -30,10 +30,10 @@ struct TBMP
 	short Md;
 };
 
-void bmp085Calibration(struct TBMP *bmp);
+int bmp085Calibration(struct TBMP *bmp);
 double bmp085GetTemperature(struct TBMP *bmp);
 double bmp085GetPressure(struct TBMP *bmp, double Temperature);
-short bmp085ReadInt(short fd, unsigned char address);
+int bmp085ReadInt(short fd, unsigned char address);
 unsigned short bmp085ReadUT(short fd);
 double bmp085ReadUP(short fd);
 
@@ -74,8 +74,15 @@ void *BMP085Loop(void *some_void_ptr)
 	// Initialise BMP085
 	if (bmp.fd = open_i2c(BMP085_ADDRESS))
 	{
-		bmp085Calibration(&bmp);
+		int NoBMP;
+		
+		NoBMP = bmp085Calibration(&bmp);
 		close(bmp.fd);
+		
+		if (NoBMP)
+		{
+			return 0;
+		}
 	}
 	else
 	{
@@ -101,8 +108,13 @@ void *BMP085Loop(void *some_void_ptr)
     return 0;
 }
 
-void bmp085Calibration(struct TBMP *bmp)
+int bmp085Calibration(struct TBMP *bmp)
 {
+	if (bmp085ReadInt(bmp->fd, 0xAA) < 0)
+	{
+		return 1;
+	}
+	
 	bmp->ac1 = bmp085ReadInt(bmp->fd, 0xAA);
 	bmp->ac2 = bmp085ReadInt(bmp->fd, 0xAC);
 	bmp->ac3 = bmp085ReadInt(bmp->fd, 0xAE);
@@ -114,6 +126,8 @@ void bmp085Calibration(struct TBMP *bmp)
 	bmp->Mb = bmp085ReadInt(bmp->fd, 0xBA);
 	bmp->Mc = bmp085ReadInt(bmp->fd, 0xBC);
 	bmp->Md = bmp085ReadInt(bmp->fd, 0xBE);
+	
+	return 0;
 
 	// printf ("Values are %d %d %d %u %u %u %d %d %d %d %d\n", ac1, ac2, ac3, ac4, ac5, ac6, B1, B2, Mb, Mc, Md);
 }
@@ -171,33 +185,10 @@ double bmp085GetPressure(struct TBMP *bmp, double Temperature)
 	return P;
 }
 
-// Read 1 byte from the BMP085 at 'address'
-/*
-unsigned char bmp085Read(unsigned char address)
-{
-	unsigned char buf[10];
-
-	buf[0] = address;
-	if ((write(fd, buf, 1)) != 1) {								// Send register we want to read from	
-		printf("Error writing to i2c slave\n");
-		exit(1);
-	}
-
-	if (read(fd, buf, 1) != 1) {								// Read back data into buf[]
-		printf("Unable to read from slave\n");
-		exit(1);
-	}
-
-	// printf ("Device address %d gives %02X\n", address, buf[0]);
-
-	return buf[0];
-}
-*/
-
 // Read 2 bytes from the BMP085
 // First byte will be from 'address'
 // Second byte will be from 'address'+1
-short bmp085ReadInt(short fd, unsigned char address)
+int bmp085ReadInt(short fd, unsigned char address)
 {
 	unsigned char buf[10];
 
@@ -205,12 +196,12 @@ short bmp085ReadInt(short fd, unsigned char address)
 
 	if ((write(fd, buf, 1)) != 1) {								// Send register we want to read from	
 		printf("Error writing to i2c slave\n");
-		exit(1);
+		return -1;
 	}
 	
 	if (read(fd, buf, 2) != 2) {								// Read back data into buf[]
 		printf("Unable to read from slave\n");
-		exit(1);
+		return -1;
 	}
 
 	return (short) buf[0]<<8 | buf[1];
