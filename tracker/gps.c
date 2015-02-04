@@ -357,7 +357,8 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 {
     float utc_time, latitude, longitude, hdop, altitude, speed, course;
 	int lock, satellites, date;
-	char ns, ew, units;
+	char active, ns, ew, units, speedstring[16], coursestring[16];
+	long Hours, Minutes, Seconds;
 	
     if (GPSChecksumOK(Buffer, Count))
 	{
@@ -386,9 +387,15 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 		}
 		else if (strncmp(Buffer+3, "RMC", 3) == 0)
 		{
-			if (sscanf(Buffer+7, "%f,%f,%c,%f,%c,%f,%f,%d", &utc_time, &latitude, &ns, &longitude, &ew, &speed, &course, &date) >= 1)
+			speedstring[0] = '\0';
+			coursestring[0] = '\0';
+			if (sscanf(Buffer+7, "%f,%c,%f,%c,%f,%c,%[^','],%[^','],%d", &utc_time, &active, &latitude, &ns, &longitude, &ew, speedstring, coursestring, &date) >= 7)
 			{
 				// $GPRMC,124943.00,A,5157.01557,N,00232.66381,W,0.039,,200314,,,A*6C
+
+				speed = atof(speedstring);
+				course = atof(coursestring);
+				
 				GPS->Speed = (int)speed;
 				GPS->Direction = (int)course;
 			}

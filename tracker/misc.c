@@ -31,16 +31,27 @@ int NewBoard(void)
 		if ((cpuFd = fopen ("/proc/cpuinfo", "r")) != NULL)
 		{
 			while (fgets (line, 120, cpuFd) != NULL)
+			{
+				if (strncmp (line, "Hardware", 8) == 0)
+				{
+					printf ("RPi %s", line);
+					if (strstr (line, "BCM2709") != NULL)
+					{
+						boardRev = 2;
+					}
+				}
+				
 				if (strncmp (line, "Revision", 8) == 0)
-					break ;
+				{
+					printf ("RPi %s", line);
+					if (boardRev < 0)
+					{
+						boardRev = ((strstr(line, "0010") != NULL) || (strstr(line, "0012") != NULL));	// B+ or A+
+					}
+				}
+			}
 
 			fclose (cpuFd) ;
-
-			if (strncmp (line, "Revision", 8) == 0)
-			{
-				printf ("RPi %s", line);
-				boardRev = ((strstr(line, "0010") != NULL) || (strstr(line, "0012") != NULL));	// B+ or A+
-			}
 		}
 	}
 	

@@ -567,7 +567,16 @@ int main(void)
 
 	if (NewBoard())
 	{
-		printf("RPi Model A+ or B+\n\n");
+		if (NewBoard() == 2)
+		{
+			printf("RPi 2 B\n");
+		}
+		else
+		{
+			printf("RPi Model A+ or B+\n");
+		}
+		
+		printf("PITS+ Board\n\n");
 		
 		Config.LED_OK = 25;
 		Config.LED_Warn = 24;
@@ -577,7 +586,8 @@ int main(void)
 	}
 	else
 	{
-		printf("RPi Model A or B\n\n");
+		printf("RPi Model A or B\n");
+		printf("PITS Board\n\n");
 
 		Config.LED_OK = 4;
 		Config.LED_Warn = 11;

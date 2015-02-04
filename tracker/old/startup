@@ -1,8 +1,0 @@
-#!/bin/bash
-cd /home/pi/pits/tracker
-sudo modprobe w1-gpio
-sudo modprobe w1_therm
-sudo modprobe i2c-dev
-./camera &
-sudo ./tracker
-
