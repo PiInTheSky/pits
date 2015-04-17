@@ -39,6 +39,7 @@
 #include "gps.h"
 #include "DS18B20.h"
 #include "adc.h"
+#include "adc_i2c.h"
 #include "misc.h"
 #include "snapper.h"
 #include "led.h"
@@ -668,10 +669,25 @@ int main(void)
 		return 1;
 	}
 
-	if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+	if (I2CADCExists())
 	{
-		fprintf(stderr, "Error creating ADC thread\n");
-		return 1;
+		printf ("V2.4 or later board with I2C ADC\n");
+		
+		if (pthread_create(&ADCThread, NULL, I2CADCLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating ADC thread\n");
+			return 1;
+		}
+	}
+	else
+	{
+		printf ("Older board with SPI ADC\n");
+		
+		if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating ADC thread\n");
+			return 1;
+		}
 	}
 
 	if (Config.Camera)

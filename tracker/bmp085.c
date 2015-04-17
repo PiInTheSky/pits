@@ -13,6 +13,7 @@
 #include <wiringPiSPI.h>
 
 #include "gps.h"
+#include "misc.h"
 
 struct TBMP
 {
@@ -38,30 +39,6 @@ unsigned short bmp085ReadUT(short fd);
 double bmp085ReadUP(short fd);
 
 #define BMP085_ADDRESS 0x77  		// I2C address of BMP085 pressure sensor
-
-
-
-short open_i2c(int address)
-{
-	short fd;
-	char i2c_dev[16];
-
-	sprintf(i2c_dev, "/dev/i2c-%d", piBoardRev()-1);
-
-	if ((fd = open(i2c_dev, O_RDWR)) < 0)
-	{                                        // Open port for reading and writing
-		printf("Failed to open i2c port\n");
-		return 0;
-	}
-
-	if (ioctl(fd, I2C_SLAVE, address) < 0)                                 // Set the port options and set the address of the device we wish to speak to
-	{
-		printf("Unable to get bus access to talk to slave on address %02Xh\n", address);
-		return 0;
-	}
-
-	return fd;
-}
 
 
 void *BMP085Loop(void *some_void_ptr)

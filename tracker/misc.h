@@ -28,3 +28,4 @@ extern struct TConfig Config;
 
 char Hex(char Character);
 void WriteLog(char *FileName, char *Buffer);
+short open_i2c(int address);

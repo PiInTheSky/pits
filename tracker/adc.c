@@ -34,12 +34,12 @@ int AnalogRead (int chan)
 double ReadADC(int chan, double FullScale)
 {
 	int RawValue;
-    double Voltage;
+    double Result;
 
    	RawValue = AnalogRead(chan);
-	Voltage = (double)RawValue * FullScale / 1024.0;
+	Result = (double)RawValue * FullScale / 1024.0;
 
-	return Voltage;
+	return Result;
 }
 
 
