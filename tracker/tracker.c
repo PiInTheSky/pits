@@ -11,7 +11,7 @@
 | 3 - Reads the current battery voltage                             |
 | 4 - Reads the current GPS position                                |
 | 5 - Builds a telemetry sentence to transmit                       |
-| 6 - Sends it to the MTX2/NTX2B radio transmitteR                  |
+| 6 - Sends it to the MTX2/NTX2B radio transmitter                  |
 | 7 - repeats steps 2-6                                             |
 |                                                                   |
 | 12/10/14 - Modifications for PITS+ V0.7 board and B+              |
@@ -61,7 +61,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
     int Count, i, j;
     unsigned char c;
     unsigned int CRC, xPolynomial;
-	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20];
+	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
 	sprintf(TimeBuffer1, "%06.0f", GPS->Time);
 	TimeBuffer2[0] = TimeBuffer1[0];
@@ -76,6 +76,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	
 	ExtraFields1[0] = '\0';
 	ExtraFields2[0] = '\0';
+	ExtraFields3[0] = '\0';
 	
 	if (NewBoard())
 	{
@@ -84,10 +85,15 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	
 	if (Config.EnableBMP085)
 	{
-		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->ExternalTemperature, GPS->Pressure);
+		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
 	}
 	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s",
+	if (GPS->DS18B20Count > 1)
+	{
+		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
+	}
+	
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s%s",
             Config.PayloadID,
             SentenceCounter,
 			TimeBuffer2,
@@ -97,10 +103,11 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 			(GPS->Speed * 13) / 7,
 			GPS->Direction,
 			GPS->Satellites,            
-            GPS->InternalTemperature,
+            GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
             GPS->BatteryVoltage,
 			ExtraFields1,
-			ExtraFields2);
+			ExtraFields2,
+			ExtraFields3);
 
     Count = strlen(TxLine);
 
@@ -158,13 +165,18 @@ void ReadString(FILE *fp, char *keyword, char *Result, int Length, int NeedValue
 	}
 }
 
-int ReadInteger(FILE *fp, char *keyword, int NeedValue)
+int ReadInteger(FILE *fp, char *keyword, int NeedValue, int Default)
 {
 	char Temp[32];
 
 	ReadString(fp, keyword, Temp, sizeof(Temp), NeedValue);
 
-	return atoi(Temp);
+	if (*Temp)
+	{
+		return atoi(Temp);
+	}
+	
+	return Default;
 }
 
 int ReadBoolean(FILE *fp, char *keyword, int NeedValue)
@@ -236,8 +248,10 @@ void LoadConfigFile(struct TConfig *Config)
 	{
 		printf("BMP085 Enabled\n");
 	}
+	
+	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", 0, 1);
 
-	BaudRate = ReadInteger(fp, "baud", 1);
+	BaudRate = ReadInteger(fp, "baud", 1, 300);
 	Config->TxSpeed = BaudToSpeed(BaudRate);
 	if (Config->TxSpeed == B0)
 	{
@@ -250,30 +264,30 @@ void LoadConfigFile(struct TConfig *Config)
 	printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
 	if (Config->Camera)
 	{
-		Config->high = ReadInteger(fp, "high", 0);
+		Config->high = ReadInteger(fp, "high", 0, 2000);
 		printf ("Image size changes at %dm\n", Config->high);
 	
-		Config->low_width = ReadInteger(fp, "low_width", 0);
-		Config->low_height = ReadInteger(fp, "low_height", 0);
+		Config->low_width = ReadInteger(fp, "low_width", 0, 320);
+		Config->low_height = ReadInteger(fp, "low_height", 0, 240);
 		printf ("Low image size %d x %d pixels\n", Config->low_width, Config->low_height);
 	
-		Config->high_width = ReadInteger(fp, "high_width", 0);
-		Config->high_height = ReadInteger(fp, "high_height", 0);
+		Config->high_width = ReadInteger(fp, "high_width", 0, 640);
+		Config->high_height = ReadInteger(fp, "high_height", 0, 480);
 		printf ("High image size %d x %d pixels\n", Config->high_width, Config->high_height);
 
-		Config->image_packets = ReadInteger(fp, "image_packets", 0);
+		Config->image_packets = ReadInteger(fp, "image_packets", 0, 4);
 		printf ("1 Telemetry packet every %d image packets\n", Config->image_packets);
 	}
 	
-	if (ReadInteger(fp, "SDA", 0))
+	if (ReadInteger(fp, "SDA", 0, 0))
 	{
-		Config->SDA = ReadInteger(fp, "SDA", 0);
+		Config->SDA = ReadInteger(fp, "SDA", 0, 0);
 		printf ("I2C SDA overridden to %d\n", Config->SDA);
 	}
 
-	if (ReadInteger(fp, "SCL", 0))
+	if (ReadInteger(fp, "SCL", 0, 0))
 	{
-		Config->SCL = ReadInteger(fp, "SCL", 0);
+		Config->SCL = ReadInteger(fp, "SCL", 0, 0);
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
 	}
 
@@ -289,12 +303,15 @@ void SetMTX2Frequency(char *FrequencyString)
 	char _mtx2command[17];
 	int fd;
 	double Frequency;
+	struct termios options;
+	uint8_t setNMEAoff[] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x80, 0x25, 0x00, 0x00, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA0, 0xA9           };
 
-	pinMode (NTX2B_ENABLE, OUTPUT);
+	// First disable transmitter
 	digitalWrite (NTX2B_ENABLE, 0);
-	delayMilliseconds (100);
+	pinMode (NTX2B_ENABLE, OUTPUT);
+	delayMilliseconds (200);
 	
-	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
 	if (fd >= 0)
 	{
 		tcgetattr(fd, &options);
@@ -305,13 +322,21 @@ void SetMTX2Frequency(char *FrequencyString)
 		options.c_cflag |= CS8;
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
-
+		options.c_iflag &= ~IXON;
+		options.c_iflag &= ~IXOFF;
+		options.c_lflag &= ~ECHO;
+		options.c_cc[VMIN]  = 0;
+		options.c_cc[VTIME] = 10;
+		
 		tcsetattr(fd, TCSANOW, &options);
 
-		delayMilliseconds (100);
-		pinMode (NTX2B_ENABLE, INPUT);
-		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-		delayMilliseconds (100);
+		// Tel UBlox to shut up
+		write(fd, setNMEAoff, sizeof(setNMEAoff));
+		tcsetattr(fd, TCSAFLUSH, &options);
+		close(fd);
+		delayMilliseconds (1000);
+		
+		fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
 		
 		if (strlen(FrequencyString) < 3)
 		{
@@ -329,22 +354,39 @@ void SetMTX2Frequency(char *FrequencyString)
 		_mtx2int=_mtx2comp;
 		_mtx2fractional = ((_mtx2comp-_mtx2int)+1) * 524288;
 		snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
-		write(fd, _mtx2command, strlen(_mtx2command)); 
-
-		delayMilliseconds (100);
 		printf("MTX2 command  is %s\n", _mtx2command);
 
+		// Let enable line float (but Tx will pull it up anyway)
+		delayMilliseconds (200);
+		pinMode (NTX2B_ENABLE, INPUT);
+		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
+		delayMilliseconds (20);
+
+		printf("Write ...\n");
+		write(fd, _mtx2command, strlen(_mtx2command)); 
+		printf("Flush ...\n");
+		tcsetattr(fd, TCSAFLUSH, &options);
+		printf("Delay ...\n");
+		delayMilliseconds (50);
+		printf("Done\n");
+
+		printf("Closing ...\n");
 		close(fd);
+		printf("Closed\n");
+
+		// Switch on the radio
+		delayMilliseconds (100);
+		digitalWrite (NTX2B_ENABLE, 1);
+		pinMode (NTX2B_ENABLE, OUTPUT);
 	}
 }
-
 
 void SetNTX2BFrequency(char *FrequencyString)
 {
 	int fd, Frequency;
 	char Command[16];
 
-	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY | O_NDELAY);
 	if (fd >= 0)
 	{
 		tcgetattr(fd, &options);
@@ -355,6 +397,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 		options.c_cflag |= CS8;
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
+		options.c_iflag &= ~IXON;
 
 		tcsetattr(fd, TCSANOW, &options);
 
@@ -386,6 +429,7 @@ void SetFrequency(char *Frequency)
 	if (NewBoard())
 	{
 		SetMTX2Frequency(Frequency);
+		SetMTX2Frequency(Frequency);
 	}
 	else
 	{
@@ -397,7 +441,7 @@ int OpenSerialPort(void)
 {
 	int fd;
 
-	fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);
+	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY | O_NDELAY);
 	if (fd >= 0)
 	{
 		/* get the current options */
@@ -414,6 +458,8 @@ int OpenSerialPort(void)
 		options.c_cflag |= CS8;
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
+		options.c_iflag &= ~IXON;
+		options.c_iflag &= ~IXOFF;
 	
 		tcsetattr(fd, TCSANOW, &options);
 	}
@@ -489,7 +535,7 @@ int FindAndConvertImage(void)
 		// Now convert the file
 		FileNumber++;
 		FileNumber = FileNumber & 255;
-		sprintf(CommandLine, "ssdv -e -c %s -i %d %s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
+		sprintf(CommandLine, "ssdv -e -c %s -i %d %.6s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
 		system(CommandLine);
 		
 		// And move those pesky image files
@@ -562,7 +608,7 @@ int main(void)
 	struct stat st = {0};
 	struct TGPS GPS;
 	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
-
+	
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
 
@@ -611,9 +657,10 @@ int main(void)
 	GPS.Satellites = 0;
 	GPS.Speed = 0.0;
 	GPS.Direction = 0.0;
-	GPS.InternalTemperature = 0.0;
+	GPS.DS18B20Temperature[0] = 0.0;
+	GPS.DS18B20Temperature[1] = 0.0;
 	GPS.BatteryVoltage = 0.0;
-	GPS.ExternalTemperature = 0.0;
+	GPS.BMP180Temperature = 0.0;
 	GPS.Pressure = 0.0;
 	
 	// Set up I/O
@@ -622,22 +669,17 @@ int main(void)
 		exit (1);
 	}
 
-	if (*Config.Frequency)
-	{
-		SetFrequency(Config.Frequency);
-	}
-
-	// Switch on the radio
+	// Switch off the radio till it's configured
 	pinMode (NTX2B_ENABLE, OUTPUT);
-	digitalWrite (NTX2B_ENABLE, 1);
-	
+	digitalWrite (NTX2B_ENABLE, 0);
+		
 	// Switch on the GPS
 	if (!NewBoard())
 	{
 		pinMode (UBLOX_ENABLE, OUTPUT);
 		digitalWrite (UBLOX_ENABLE, 0);
 	}
-	
+
 	if ((fd = OpenSerialPort()) < 0)
 	{
 		printf("Cannot open serial port - check documentation!\n");
@@ -645,6 +687,14 @@ int main(void)
 	}
 	close(fd);
 
+	if (*Config.Frequency)
+	{
+		SetFrequency(Config.Frequency);
+	}
+
+	// Switch off the radio till it's configured
+	digitalWrite (NTX2B_ENABLE, 1);
+		
 	// Set up DS18B20
 	system("sudo modprobe w1-gpio");
 	system("sudo modprobe w1-therm");
@@ -654,7 +704,7 @@ int main(void)
 
 	if (stat(SSDVFolder, &st) == -1)
 	{
-		mkdir(SSDVFolder, 0700);
+		mkdir(SSDVFolder, 0777);
 	}	
 
 	if (pthread_create(&GPSThread, NULL, GPSLoop, &GPS))

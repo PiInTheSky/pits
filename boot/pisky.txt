@@ -1,6 +1,5 @@
-payload=PI_SKY_PLUS
+payload=CHANGE_ME
 disable_monitor=N
-#frequency=80
 frequency=434.450
 baud=300
 camera=1
@@ -11,4 +10,5 @@ high_width=640
 high_height=480
 image_packets=4
 enable_bmp085=N
-# logging=GPS,Telemetry
+logging=GPS,Telemetry
+#external_temperature=0

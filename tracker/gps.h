@@ -8,11 +8,12 @@ struct TGPS
 	unsigned int Satellites;
 	int Speed;
 	int Direction;
-	float InternalTemperature;
+	float DS18B20Temperature[2];
 	float BatteryVoltage;
-	float ExternalTemperature;
+	float BMP180Temperature;
 	float Pressure;
 	float BoardCurrent;
+	int DS18B20Count;
 } GPS;
 
 

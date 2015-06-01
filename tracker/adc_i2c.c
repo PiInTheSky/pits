@@ -90,16 +90,16 @@ void *I2CADCLoop(void *some_void_ptr)
 			
 			BatteryVoltage = ReadI2CADC(fd, 0, 33.024);
 			GPS->BatteryVoltage = BatteryVoltage;
-			printf("Battery Voltage = %lf\n", BatteryVoltage);
+			// printf("Battery Voltage = %lf\n", BatteryVoltage);
 			
 			BoardCurrent = ReadI2CADC(fd, 1, 1.4);
 			GPS->BoardCurrent = BoardCurrent;
-			printf("Board Current = %lf\n", BoardCurrent);
+			// printf("Board Current = %lf\n", BoardCurrent);
 
 			close(fd);
 		}
 
-		sleep(1);
+		sleep(10);
 	}
 
     return 0;

@@ -1,29 +1,30 @@
 tracker: tracker.o gps.o misc.o DS18B20.o adc.o adc_i2c.o snapper.o led.o bmp085.o
-	cc -o tracker tracker.o gps.o misc.o DS18B20.o adc.o adc_i2c.o snapper.o led.o bmp085.o -lm -lwiringPi -lwiringPiDev -l pthread
+	cc -o tracker tracker.o gps.o misc.o DS18B20.o adc.o adc_i2c.o snapper.o led.o bmp085.o -lm -lwiringPi -lwiringPiDev -pthread
+
 
 tracker.o: tracker.c gps.h misc.h DS18B20.h adc.h adc_i2c.h bmp085.h
-	gcc -c tracker.c
+	gcc -c -pthread tracker.c
 
 gps.o: gps.c gps.h misc.h
-	gcc -c gps.c
+	gcc -c -pthread gps.c
 
 DS18B20.o: DS18B20.c DS18B20.h misc.h gps.h
-	gcc -c DS18B20.c
+	gcc -c -pthread DS18B20.c
 
 adc.o: adc.c adc.h misc.h gps.h
-	gcc -c adc.c
+	gcc -c -pthread adc.c
 	
 adc_i2c.o: adc_i2c.c adc_i2c.h misc.h gps.h
-	gcc -c adc_i2c.c
+	gcc -c -pthread adc_i2c.c
 	
 snapper.o: snapper.c snapper.h misc.h
-	gcc -c snapper.c
+	gcc -c -pthread snapper.c
 
 led.o: led.c led.h misc.h
-	gcc -c led.c
+	gcc -c -pthread led.c
 	
 misc.o: misc.c misc.h
-	gcc -c misc.c
+	gcc -c -pthread misc.c
 
 bmp085.o: bmp085.c bmp085.h
-	gcc -c bmp085.c
+	gcc -c -pthread bmp085.c

@@ -1,0 +1,10 @@
+while [ 1 ]
+do
+	sudo ./set_freq 434.45
+	sleep 1
+	sudo ./set_freq 434.50
+	sleep 1
+	sudo ./set_freq 434.55
+	sleep 1
+done
+

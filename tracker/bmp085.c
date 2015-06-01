@@ -70,10 +70,10 @@ void *BMP085Loop(void *some_void_ptr)
 	{
 		if (bmp.fd = open_i2c(BMP085_ADDRESS))
 		{
-			GPS->ExternalTemperature = bmp085GetTemperature(&bmp);
-			GPS->Pressure = bmp085GetPressure(&bmp, GPS->ExternalTemperature);
+			GPS->BMP180Temperature = bmp085GetTemperature(&bmp);
+			GPS->Pressure = bmp085GetPressure(&bmp, GPS->BMP180Temperature);
 
-			// printf("Temperature is %5.2lf\n", GPS->ExternalTemperature);
+			// printf("Temperature is %5.2lf\n", GPS->BMP180Temperature);
 			// printf("Pressure is %5.2lf\n", GPS->Pressure);
 
 			close(bmp.fd);
@@ -196,9 +196,10 @@ unsigned short bmp085ReadUT(short fd)
 	buf[0] = 0xF4;
 	buf[1] = 0x2E;
 
-	if ((write(fd, buf, 2)) != 2) {								// Send register we want to read from	
+	if ((write(fd, buf, 2)) != 2)
+	{
 		printf("Error writing to i2c slave\n");
-		exit(1);
+		return 0;
 	}
 
 	usleep(5000);
@@ -223,23 +224,26 @@ double bmp085ReadUP(short fd)
 	buf[0] = 0xF4;
 	buf[1] = 0x34;
 
-	if ((write(fd, buf, 2)) != 2) {								// Send register we want to read from	
+	if ((write(fd, buf, 2)) != 2)
+	{
 		printf("Error writing to i2c slave\n");
-		exit(1);
+		return 0;
 	}
 
 	usleep(3000);
 
 	buf[0] = 0xF6;
 
-	if ((write(fd, buf, 1)) != 1) {								// Send register we want to read from	
+	if ((write(fd, buf, 1)) != 1)
+	{
 		printf("Error writing to i2c slave\n");
-		exit(1);
+		return 0;
 	}
 	
-	if (read(fd, buf, 3) != 3) {								// Read back data into buf[]
+	if (read(fd, buf, 3) != 3)
+	{
 		printf("Unable to read from slave\n");
-		exit(1);
+		return 0;
 	}
 
 	msb = buf[0];

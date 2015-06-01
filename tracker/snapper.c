@@ -40,6 +40,9 @@ void *CameraLoop(void *some_void_ptr)
 			new_mode = 1;
 		}
 		
+		width = (width / 16)* 16;
+		height = (height / 16) * 16;
+		
 		if (new_mode |= old_mode)
 		{
 			if ((fp = fopen(filename, "wt")) != NULL)

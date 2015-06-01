@@ -15,6 +15,7 @@ struct TConfig
 	int high_width;
 	int high_height;
 	int image_packets;
+	int ExternalDS18B20;
 	int EnableBMP085;
 	int EnableGPSLogging;
 	int EnableTelemetryLogging;

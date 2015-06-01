@@ -28,3 +28,15 @@ CHANGE LOG
 - Camera filenames are now the system time
 - Camera images are now saved in dated folders
 
+01/06/2015
+
+- MTX2 frequency-setting code changed to fix random fails to set frequency
+- logging now on by default
+- log files removed from repository
+- Long payload IDs are truncated to 6 before passing to SSDV program
+- SSDV image widths and heights now forced to be multiples of 16 pixels
+- Added support for second (external) DS18B20 temperature sensor
+- Fix to occassional missing packets
+- Support for Pi V2 B
+- Protect against BMP085/180 being disconnected after initialisation
+
