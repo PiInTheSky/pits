@@ -385,8 +385,15 @@ void SetNTX2BFrequency(char *FrequencyString)
 {
 	int fd, Frequency;
 	char Command[16];
+	struct termios options;
+	uint8_t setNMEAoff[] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x80, 0x25, 0x00, 0x00, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA0, 0xA9           };
 
-	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY | O_NDELAY);
+	// First disable transmitter
+	digitalWrite (NTX2B_ENABLE, 0);
+	pinMode (NTX2B_ENABLE, OUTPUT);
+	delayMilliseconds (200);
+	
+	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
 	if (fd >= 0)
 	{
 		tcgetattr(fd, &options);
@@ -398,12 +405,21 @@ void SetNTX2BFrequency(char *FrequencyString)
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
 		options.c_iflag &= ~IXON;
-
+		options.c_iflag &= ~IXOFF;
+		options.c_lflag &= ~ECHO;
+		options.c_cc[VMIN]  = 0;
+		options.c_cc[VTIME] = 10;
+		
 		tcsetattr(fd, TCSANOW, &options);
 
-		pinMode (NTX2B_ENABLE, INPUT);
-		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-
+		// Tel UBlox to shut up
+		write(fd, setNMEAoff, sizeof(setNMEAoff));
+		tcsetattr(fd, TCSAFLUSH, &options);
+		close(fd);
+		delayMilliseconds (1000);
+		
+		fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
+		
 		if (strlen(FrequencyString) < 3)
 		{
 			// Already a channel number
@@ -416,13 +432,28 @@ void SetNTX2BFrequency(char *FrequencyString)
 		}
 		
 		sprintf(Command, "%cch%02X\r", 0x80, Frequency);
-		write(fd, Command, strlen(Command)); 
 
 		printf("NTX2B-FA transmitter now set to channel %02Xh which is %8.4lfMHz\n", Frequency, (double)(Frequency) * 0.003125 + 434.05);
 
+		// Let enable line float (but Tx will pull it up anyway)
+		delayMilliseconds (200);
+		pinMode (NTX2B_ENABLE, INPUT);
+		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
+		delayMilliseconds (20);
+
+		write(fd, Command, strlen(Command)); 
+		tcsetattr(fd, TCSAFLUSH, &options);
+		delayMilliseconds (50);
+
 		close(fd);
+
+		// Switch on the radio
+		delayMilliseconds (100);
+		digitalWrite (NTX2B_ENABLE, 1);
+		pinMode (NTX2B_ENABLE, OUTPUT);
 	}
 }
+
 
 void SetFrequency(char *Frequency)
 {
