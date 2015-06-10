@@ -566,7 +566,7 @@ int FindAndConvertImage(void)
 		// Now convert the file
 		FileNumber++;
 		FileNumber = FileNumber & 255;
-		sprintf(CommandLine, "ssdv -e -c %s -i %d %.6s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
+		sprintf(CommandLine, "ssdv -e -c %.6s -i %d %6s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
 		system(CommandLine);
 		
 		// And move those pesky image files

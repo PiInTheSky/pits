@@ -1,6 +1,6 @@
 .dropbox
 desktop.ini
-.o
+*.o
 tracker/tracker
 tracker/download
 tracker/keep
