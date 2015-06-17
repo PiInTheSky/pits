@@ -17,6 +17,7 @@
 | 12/10/14 - Modifications for PITS+ V0.7 board and B+              |
 | 11/11/14 - Modifications for PITS+ V2.0 board and A+/B+           |
 | 19/12/14 - New GPS code.  Frequency calcs.  Image filenames       |
+| 14/06/15 - Merged in APRS code.                                   |
 |                                                                   |
 \------------------------------------------------------------------*/
 
@@ -44,6 +45,7 @@
 #include "snapper.h"
 #include "led.h"
 #include "bmp085.h"
+#include "aprs.h"
 
 struct TConfig Config;
 
@@ -63,7 +65,8 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
     unsigned int CRC, xPolynomial;
 	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
-	sprintf(TimeBuffer1, "%06.0f", GPS->Time);
+	// sprintf(TimeBuffer1, "%06.0f", GPS->Time);
+	sprintf(TimeBuffer1, "%06ld", GPS->Time);
 	TimeBuffer2[0] = TimeBuffer1[0];
 	TimeBuffer2[1] = TimeBuffer1[1];
 	TimeBuffer2[2] = ':';
@@ -291,6 +294,16 @@ void LoadConfigFile(struct TConfig *Config)
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
 	}
 
+	// APRS settings
+	ReadString(fp, "APRS_Callsign", Config->APRS_Callsign, sizeof(Config->APRS_Callsign), 0);
+	Config->APRS_ID = ReadInteger(fp, "APRS_ID", 0, 11);
+	Config->APRS_Period = ReadInteger(fp, "APRS_Period", 0, 1);
+	Config->APRS_Offset = ReadInteger(fp, "APRS_Offset", 0, 0);
+	Config->APRS_Random = ReadInteger(fp, "APRS_Random", 0, 0);
+	if (*(Config->APRS_Callsign) && Config->APRS_ID && Config->APRS_Period)
+	{
+		printf("APRS enabled for callsign %s:%d every %d minute%s with offset %ds\n", Config->APRS_Callsign, Config->APRS_ID, Config->APRS_Period, Config->APRS_Period > 1 ? "s" : "", Config->APRS_Offset);
+	}
 	
 	fclose(fp);
 }
@@ -362,17 +375,11 @@ void SetMTX2Frequency(char *FrequencyString)
 		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
 		delayMilliseconds (20);
 
-		printf("Write ...\n");
 		write(fd, _mtx2command, strlen(_mtx2command)); 
-		printf("Flush ...\n");
 		tcsetattr(fd, TCSAFLUSH, &options);
-		printf("Delay ...\n");
 		delayMilliseconds (50);
-		printf("Done\n");
 
-		printf("Closing ...\n");
 		close(fd);
-		printf("Closed\n");
 
 		// Switch on the radio
 		delayMilliseconds (100);
@@ -472,7 +479,7 @@ int OpenSerialPort(void)
 {
 	int fd;
 
-	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY | O_NDELAY);
+	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);	// O_NDELAY);
 	if (fd >= 0)
 	{
 		/* get the current options */
@@ -498,29 +505,37 @@ int OpenSerialPort(void)
 	return fd;
 }
 
-void SendSentence(char *TxLine)
+void SendSentence(int fd, char *TxLine)
 {
-	int fd;
+	// int fd;
 
 	
-	if ((fd = OpenSerialPort()) >= 0)
+	// if ((fd = OpenSerialPort()) >= 0)
 	{
+		// printf("Sending sentence ...\n");
 		write(fd, TxLine, strlen(TxLine));
-		
-		if (close(fd) < 0)
-		{
-			printf("NOT Sent - error %d\n", errno);
-		}
-		
+
+		// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
 		if (Config.EnableTelemetryLogging)
 		{
 			WriteLog("telemetry.txt", TxLine);
 		}
+		
+		// Wait till those characters get sent
+		tcsetattr(fd, TCSAFLUSH, &options);
+		// printf("Sent\n");
+		
+		// if (close(fd) < 0)
+		// {
+			// printf("NOT Sent - error %d\n", errno);
+		// }
 	}
+	/*
 	else
 	{
 		printf("Failed to open serial port\n");
 	}
+	*/
 	
 }
 
@@ -589,12 +604,12 @@ int FindAndConvertImage(void)
 	return (LargestFileSize > 0);
 }
 
-int SendImage()
+int SendImage(int fd)
 {
     unsigned char Buffer[256];
     size_t Count;
     int SentSomething = 0;
-	int fd;
+	// int fd;
 
     if (ImageFP == NULL)
     {
@@ -612,10 +627,13 @@ int SendImage()
         {
             printf("Record %d, %d bytes\r\n", ++Records, Count);
 
-			if ((fd = OpenSerialPort()) >= 0)
+			// if ((fd = OpenSerialPort()) >= 0)
 			{
+				printf("Sending image packet ...\n");
 				write(fd, Buffer, Count);
-				close(fd);
+				tcsetattr(fd, TCSAFLUSH, &options);
+				printf("Sent\n");
+				// close(fd);
 			}
 
             SentSomething = 1;
@@ -638,7 +656,7 @@ int main(void)
 	char Sentence[100], Command[100];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
+	pthread_t APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
 	
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
@@ -716,7 +734,7 @@ int main(void)
 		printf("Cannot open serial port - check documentation!\n");
 		exit(1);
 	}
-	close(fd);
+	// close(fd);
 
 	if (*Config.Frequency)
 	{
@@ -744,6 +762,15 @@ int main(void)
 		return 1;
 	}
 
+	if (*(Config.APRS_Callsign) && Config.APRS_ID && Config.APRS_Period)
+	{
+		if (pthread_create(&APRSThread, NULL, APRSLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating APRS thread\n");
+			return 1;
+		}
+	}
+	
 	if (pthread_create(&DS18B20Thread, NULL, DS18B20Loop, &GPS))
 	{
 		fprintf(stderr, "Error creating DS18B20s thread\n");
@@ -799,11 +826,11 @@ int main(void)
 	{	
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
 		
-		SendSentence(Sentence);
+		SendSentence(fd, Sentence);
 		
 		for (i=0; i< ((GPS.Altitude > Config.high) ? Config.image_packets : 1); i++)
 		{
-			SendImage();
+			SendImage(fd);
 		}
 	}
 }

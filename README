@@ -11,22 +11,21 @@ Software support is provided for customers who have
 purchased a PITS or PITS+ board, for use with that board only.
 
 INSTALLING
+==========
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
 CHANGE LOG
+==========
 
-19/12/2014
+17/06/2015
 
-- GPS code completely re-written to use WiringPi library instead of bcm library
-- default configuration now leaves the monitor on, to ease development
-- As the PITS+ boards are set by frequency in MHz, but the earlier board was
-  set by channel number, the code now accepts either "frequency=nn" for channel
-  number, of frequency=xxx.xxxMHz for actual frequency.  Not that using the
-  second form does not give you more options on the older board - the frequency
-  will be set to the closest channnel.
-- Camera filenames are now the system time
-- Camera images are now saved in dated folders
+- Merged in APRS code (APRS branch is now defunct)
+- Added options to control when APRS packets are sent
+- Fixed issue with tracker program failing SD card is pulled and APRS enabled
+- NTX2 frequency-setting code now has same improvements as for MTX2
+- Serial port kept open now instead of open/close each packet; using flush command to sync instead of closing.  This allows ...
+- ... Telemetry log entries now written whilst waiting for telemetry to Tx; removes/reduces delay due to SD card writing.
 
 01/06/2015
 
@@ -40,3 +39,14 @@ CHANGE LOG
 - Support for Pi V2 B
 - Protect against BMP085/180 being disconnected after initialisation
 
+19/12/2014
+
+- GPS code completely re-written to use WiringPi library instead of bcm library
+- default configuration now leaves the monitor on, to ease development
+- As the PITS+ boards are set by frequency in MHz, but the earlier board was
+  set by channel number, the code now accepts either "frequency=nn" for channel
+  number, of frequency=xxx.xxxMHz for actual frequency.  Not that using the
+  second form does not give you more options on the older board - the frequency
+  will be set to the closest channnel.
+- Camera filenames are now the system time
+- Camera images are now saved in dated folders

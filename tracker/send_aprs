@@ -1,0 +1,26 @@
+#!/bin/bash
+cd /home/pi/pits/tracker
+echo Redirect audio to GPIO ...
+sudo ./pwm_switch
+echo Set APRS volume ...
+amixer set PCM -- 400
+
+echo Set up HX1 control ...
+gpio mode 4 output
+gpio write 4 0
+
+while [ 1 ]
+do
+	if [ -e aprs.wav ]
+	then
+		echo Sending APRS Packet
+		gpio write 4 1
+		sleep 0.5
+		aplay aprs.wav
+		sleep 0.2
+		gpio write 4 0
+		rm -f aprs.wav
+		sleep 20
+	fi
+	sleep 1
+done

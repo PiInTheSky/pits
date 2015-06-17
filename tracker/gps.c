@@ -372,6 +372,10 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 				if (satellites >= 4)
 				{
 					GPS->Time = utc_time;
+					Hours = GPS->Time / 10000;
+					Minutes = (GPS->Time / 100) % 100;
+					Seconds = GPS->Time % 100;
+					GPS->Seconds = Hours * 3600 + Minutes * 60 + Seconds;					
 					GPS->Latitude = FixPosition(latitude);
 					if (ns == 'S') GPS->Latitude = -GPS->Latitude;
 					GPS->Longitude = FixPosition(longitude);

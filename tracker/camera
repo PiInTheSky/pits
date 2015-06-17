@@ -16,7 +16,7 @@ do
 		./take_pic $current_time
 	fi
 
-	echo sleeping ...
+	# echo sleeping ...
 	sleep 15
 
 	echo Taking photo for storage
@@ -26,6 +26,6 @@ do
 	# raspistill -w 2592 -h 1944 -v -t 3000 -ex auto -mm matrix -o keep/$current_date/$current_time.jpg
 	raspistill -w 2592 -h 1944 -t 3000 -ex auto -mm matrix -o keep/$current_date/$current_time.jpg
 
-	echo sleeping ...
+	# echo sleeping ...
 	sleep 15
 done
