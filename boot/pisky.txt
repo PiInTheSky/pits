@@ -16,3 +16,5 @@ logging=GPS,Telemetry
 # APRS_Callsign=your_callsign
 APRS_ID=11
 APRS_Period=1
+APRS_Offset=10
+APRS_Random=5
