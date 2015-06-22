@@ -13,12 +13,7 @@
 | 5 - Builds a telemetry sentence to transmit                       |
 | 6 - Sends it to the MTX2/NTX2B radio transmitter                  |
 | 7 - repeats steps 2-6                                             |
-|                                                                   |
-| 12/10/14 - Modifications for PITS+ V0.7 board and B+              |
-| 11/11/14 - Modifications for PITS+ V2.0 board and A+/B+           |
-| 19/12/14 - New GPS code.  Frequency calcs.  Image filenames       |
-| 14/06/15 - Merged in APRS code.                                   |
-|                                                                   |
+|                                                                   ||                                                                   |
 \------------------------------------------------------------------*/
 
 #include <unistd.h>
@@ -37,6 +32,10 @@
 #include <math.h>
 #include <pthread.h>
 #include <wiringPi.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <ifaddrs.h>
+#include <sys/statvfs.h>
 #include "gps.h"
 #include "DS18B20.h"
 #include "adc.h"
@@ -648,10 +647,48 @@ int SendImage(int fd)
     return SentSomething;
 }
 
+void SendIPAddress(int fd)
+{
+    struct ifaddrs *ifap, *ifa;
+    struct sockaddr_in *sa;
+    char *addr;
+
+    getifaddrs (&ifap);
+    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr->sa_family==AF_INET) {
+            sa = (struct sockaddr_in *) ifa->ifa_addr;
+            addr = inet_ntoa(sa->sin_addr);
+			if (strcmp(addr, "127.0.0.1") != 0)
+			{
+				char Sentence[200];
+				
+				sprintf(Sentence, "Interface %s has IP Address: %s\n", ifa->ifa_name, addr);
+				printf(Sentence);
+				SendSentence(fd, Sentence);
+			}
+        }
+    }
+
+    freeifaddrs(ifap);
+}
+
+void SendFreeSpace(int fd)
+{
+	struct statvfs vfs;
+
+	if (statvfs("/home", &vfs) == 0)
+	{
+		char Sentence[200];
+		
+		sprintf(Sentence, "Free SD space = %.1fMB\n", (float)vfs.f_bsize * (float)vfs.f_bfree / (1024 * 1024));
+		printf(Sentence);
+		SendSentence(fd, Sentence);
+	}
+}
 
 int main(void)
 {
-	int fd, ReturnCode, i;
+	int fd, ReturnCode, i, StartupSentenceCount;
 	unsigned long Sentence_Counter = 0;
 	char Sentence[100], Command[100];
 	struct stat st = {0};
@@ -822,6 +859,13 @@ int main(void)
 		}
 	}
 		
+	StartupSentenceCount = (Config.TxSpeed < B300) ? 2 : 4;
+	for (i=0; i<StartupSentenceCount; i++)
+	{
+		SendIPAddress(fd);
+		SendFreeSpace(fd);
+	}
+
 	while (1)
 	{	
 		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
