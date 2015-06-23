@@ -90,3 +90,10 @@ short open_i2c(int address)
 
 	return fd;
 }
+
+int FileExists(char *filename)
+{
+	struct stat st;
+
+	return stat(filename, &st) == 0;
+}

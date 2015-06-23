@@ -7,6 +7,7 @@ struct TConfig
 	char PayloadID[16];
 	char Frequency[8];
 	int DisableMonitor;
+	int InfoMessageCount;
 	speed_t TxSpeed;
 	int Camera;
 	int low_width;
@@ -35,3 +36,4 @@ extern struct TConfig Config;
 char Hex(char Character);
 void WriteLog(char *FileName, char *Buffer);
 short open_i2c(int address);
+int FileExists(char *filename);

@@ -292,6 +292,9 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->SCL = ReadInteger(fp, "SCL", 0, 0);
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
 	}
+	
+	
+	Config->InfoMessageCount = ReadInteger(fp, "info_messages", 0, -1);
 
 	// APRS settings
 	ReadString(fp, "APRS_Callsign", Config->APRS_Callsign, sizeof(Config->APRS_Callsign), 0);
@@ -688,7 +691,7 @@ void SendFreeSpace(int fd)
 
 int main(void)
 {
-	int fd, ReturnCode, i, StartupSentenceCount;
+	int fd, ReturnCode, i;
 	unsigned long Sentence_Counter = 0;
 	char Sentence[100], Command[100];
 	struct stat st = {0};
@@ -734,6 +737,18 @@ int main(void)
 	if (Config.DisableMonitor)
 	{
 		system("/opt/vc/bin/tvservice -off");
+	}
+	
+	if (FileExists("/boot/clear.txt"))
+	{
+		// remove SSDV and other camera images, plus log files
+
+		printf("Removing existing photo files\n");
+		remove("gps.txt");
+		remove("telemetry.txt");
+		remove("/boot/clear.txt");
+		system("rm -rf /home/pi/pits/tracker/download/*.jpg");
+		system("rm -rf /home/pi/pits/tracker/keep/*.jpg");
 	}
 
 	GPS.Time = 0.0;
@@ -858,9 +873,14 @@ int main(void)
 			return 1;
 		}
 	}
-		
-	StartupSentenceCount = (Config.TxSpeed < B300) ? 2 : 4;
-	for (i=0; i<StartupSentenceCount; i++)
+
+	if (Config.InfoMessageCount < 0)
+	{
+		// Default number depends on baud rate
+		Config.InfoMessageCount = (Config.TxSpeed < B300) ? 2 : 4;
+	}
+	
+	for (i=0; i<Config.InfoMessageCount; i++)
 	{
 		SendIPAddress(fd);
 		SendFreeSpace(fd);
