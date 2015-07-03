@@ -11,7 +11,7 @@ high_height=480
 image_packets=4
 enable_bmp085=N
 logging=GPS,Telemetry
-#external_temperature=0
+external_temperature=1
 
 # APRS_Callsign=your_callsign
 APRS_ID=11
