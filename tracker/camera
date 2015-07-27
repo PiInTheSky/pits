@@ -23,8 +23,7 @@ do
 	current_date=$(date "+%d_%m_%y")
 	current_time=$(date "+%H_%M_%S")
 	mkdir -p keep/$current_date
-	# raspistill -w 2592 -h 1944 -v -t 3000 -ex auto -mm matrix -o keep/$current_date/$current_time.jpg
-	raspistill -w 2592 -h 1944 -t 3000 -ex auto -mm matrix -o keep/$current_date/$current_time.jpg
+	raspistill -st -w 2592 -h 1944 -t 3000 -ex auto -mm matrix -o keep/$current_date/$current_time.jpg
 
 	# echo sleeping ...
 	sleep 15

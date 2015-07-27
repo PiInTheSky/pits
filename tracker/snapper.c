@@ -47,7 +47,7 @@ void *CameraLoop(void *some_void_ptr)
 		{
 			if ((fp = fopen(filename, "wt")) != NULL)
 			{
-				fprintf(fp, "raspistill -w %d -h %d -t 3000 -ex auto -mm matrix -o /home/pi/pits/tracker/download/$1.jpg\n", width, height);
+				fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix -o /home/pi/pits/tracker/download/$1.jpg\n", width, height);
 				fclose(fp);
 				chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 				new_mode = old_mode;
