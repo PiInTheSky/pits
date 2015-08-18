@@ -13,7 +13,7 @@
 | 5 - Builds a telemetry sentence to transmit                       |
 | 6 - Sends it to the MTX2/NTX2B radio transmitter                  |
 | 7 - repeats steps 2-6                                             |
-|                                                                   ||                                                                   |
+|                                                                   |
 \------------------------------------------------------------------*/
 
 #include <unistd.h>
@@ -45,6 +45,8 @@
 #include "led.h"
 #include "bmp085.h"
 #include "aprs.h"
+#include "lora.h"
+#include "prediction.h"
 
 struct TConfig Config;
 
@@ -55,16 +57,14 @@ struct TConfig Config;
 FILE *ImageFP;
 int Records, FileNumber;
 struct termios options;
-char *SSDVFolder="/home/pi/pits/tracker/download";
+char *SSDVFolder="/home/pi/pits/tracker/images";
  
 void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
-    int Count, i, j;
+    int i, j;
     unsigned char c;
-    unsigned int CRC, xPolynomial;
 	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
-	// sprintf(TimeBuffer1, "%06.0f", GPS->Time);
 	sprintf(TimeBuffer1, "%06ld", GPS->Time);
 	TimeBuffer2[0] = TimeBuffer1[0];
 	TimeBuffer2[1] = TimeBuffer1[1];
@@ -95,8 +95,9 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
 	}
 	
+	// $$SKYCADEMY,128,11:55:53,51.95029,-2.54441,00136,0,0,5,0.0,2.9,36.0*AFF1
     sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s%s",
-            Config.PayloadID,
+            Config.Channels[RTTY_CHANNEL].PayloadID,
             SentenceCounter,
 			TimeBuffer2,
             GPS->Latitude,
@@ -105,99 +106,17 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 			(GPS->Speed * 13) / 7,
 			GPS->Direction,
 			GPS->Satellites,            
-            GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
+            GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
             GPS->BatteryVoltage,
 			ExtraFields1,
 			ExtraFields2,
 			ExtraFields3);
 
-    Count = strlen(TxLine);
-
-    CRC = 0xffff;           // Seed
-    xPolynomial = 0x1021;
-   
-     for (i = 2; i < Count; i++)
-     {   // For speed, repeat calculation instead of looping for each bit
-        CRC ^= (((unsigned int)TxLine[i]) << 8);
-        for (j=0; j<8; j++)
-        {
-            if (CRC & 0x8000)
-                CRC = (CRC << 1) ^ 0x1021;
-            else
-                CRC <<= 1;
-        }
-     }
-
-    TxLine[Count++] = '*';
-    TxLine[Count++] = Hex((CRC >> 12) & 15);
-    TxLine[Count++] = Hex((CRC >> 8) & 15);
-    TxLine[Count++] = Hex((CRC >> 4) & 15);
-    TxLine[Count++] = Hex(CRC & 15);
-	TxLine[Count++] = '\n';  
-	TxLine[Count++] = '\0';  
-
-    printf("%s", TxLine);
-}
-
-
-void ReadString(FILE *fp, char *keyword, char *Result, int Length, int NeedValue)
-{
-	char line[100], *token, *value;
- 
-	fseek(fp, 0, SEEK_SET);
-	*Result = '\0';
-
-	while (fgets(line, sizeof(line), fp) != NULL)
-	{
-		line[strcspn(line, "\r")] = '\0';			// Ignore any CR (in case someone has edited the file from Windows with notepad)
-		
-		token = strtok(line, "=");
-		if (strcmp(keyword, token) == 0)
-		{
-			value = strtok(NULL, "\n");
-			strcpy(Result, value);
-			return;
-		}
-	}
-
-	if (NeedValue)
-	{
-		printf("Missing value for '%s' in configuration file\n", keyword);
-		exit(1);
-	}
-}
-
-int ReadInteger(FILE *fp, char *keyword, int NeedValue, int Default)
-{
-	char Temp[32];
-
-	ReadString(fp, keyword, Temp, sizeof(Temp), NeedValue);
-
-	if (*Temp)
-	{
-		return atoi(Temp);
-	}
+	AppendCRC(TxLine);
 	
-	return Default;
+    LogMessage("RTTY: %.70s", TxLine);
 }
 
-int ReadBoolean(FILE *fp, char *keyword, int NeedValue)
-{
-	char Temp[32];
-
-	ReadString(fp, keyword, Temp, sizeof(Temp), NeedValue);
-
-	return (*Temp == '1') || (*Temp == 'Y') || (*Temp == 'y');
-}
-
-int ReadBooleanFromString(FILE *fp, char *keyword, char *searchword)
-{
-	char Temp[100];
-
-	ReadString(fp, keyword, Temp, sizeof(Temp), 0);
-
-	if (strcasestr(Temp, searchword)) return 1; else return 0;
-}
 
 speed_t BaudToSpeed(int baud)
 {
@@ -227,16 +146,36 @@ void LoadConfigFile(struct TConfig *Config)
 		exit(1);
 	}
 
-	ReadString(fp, "payload", Config->PayloadID, sizeof(Config->PayloadID), 1);
-	printf ("Payload ID = '%s'\n", Config->PayloadID);
-
-	Config->Frequency[0] = '\0';
-	ReadString(fp, "frequency", Config->Frequency, sizeof(Config->Frequency), 0);
-
-	Config->DisableMonitor = ReadBoolean(fp, "disable_monitor", 0);
+	ReadBoolean(fp, "disable_monitor", -1, 0, &(Config->DisableMonitor));
 	if (Config->DisableMonitor)
 	{
 		printf("HDMI/Composite outputs will be disabled\n");
+	}
+	
+	ReadBoolean(fp, "Disable_RTTY", -1, 0, &(Config->DisableRTTY));
+	Config->Channels[RTTY_CHANNEL].Enabled = !Config->DisableRTTY;
+	if (Config->DisableRTTY)
+	{
+		printf("RTTY Disabled\n");
+	}
+	else
+	{
+		ReadString(fp, "payload", -1, Config->Channels[RTTY_CHANNEL].PayloadID, sizeof(Config->Channels[RTTY_CHANNEL].PayloadID), 1);
+		printf ("RTTY Payload ID = '%s'\n", Config->Channels[RTTY_CHANNEL].PayloadID);
+		
+		ReadString(fp, "frequency", -1, Config->Frequency, sizeof(Config->Frequency), 0);
+		
+		BaudRate = ReadInteger(fp, "baud", -1, 1, 300);
+		
+		Config->Channels[RTTY_CHANNEL].BaudRate = BaudRate;
+		
+		Config->TxSpeed = BaudToSpeed(BaudRate);
+		if (Config->TxSpeed == B0)
+		{
+			printf ("Unknown baud rate %d\nPlease edit in configuration file\n", BaudRate);
+			exit(1);
+		}
+		printf ("Radio baud rate = %d\n", BaudRate);
 	}
 	
 	Config->EnableGPSLogging = ReadBooleanFromString(fp, "logging", "GPS");
@@ -245,67 +184,82 @@ void LoadConfigFile(struct TConfig *Config)
 	Config->EnableTelemetryLogging = ReadBooleanFromString(fp, "logging", "Telemetry");
 	if (Config->EnableTelemetryLogging) printf("Telemetry Logging enabled\n");
 	
-	Config->EnableBMP085 = ReadBoolean(fp, "enable_bmp085", 0);
+	ReadBoolean(fp, "enable_bmp085", -1, 0, &(Config->EnableBMP085));
 	if (Config->EnableBMP085)
 	{
 		printf("BMP085 Enabled\n");
 	}
 	
-	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", 0, 1);
+	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", -1, 0, 1);
 
-	BaudRate = ReadInteger(fp, "baud", 1, 300);
-	Config->TxSpeed = BaudToSpeed(BaudRate);
-	if (Config->TxSpeed == B0)
-	{
-		printf ("Unknown baud rate %d\nPlease edit in configuration file\n", BaudRate);
-		exit(1);
-	}
-	printf ("Radio baud rate = %d\n", BaudRate);
-
-	Config->Camera = ReadBoolean(fp, "camera", 0);
+	ReadBoolean(fp, "camera", -1, 0, &(Config->Camera));
 	printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
 	if (Config->Camera)
 	{
-		Config->high = ReadInteger(fp, "high", 0, 2000);
-		printf ("Image size changes at %dm\n", Config->high);
-	
-		Config->low_width = ReadInteger(fp, "low_width", 0, 320);
-		Config->low_height = ReadInteger(fp, "low_height", 0, 240);
-		printf ("Low image size %d x %d pixels\n", Config->low_width, Config->low_height);
-	
-		Config->high_width = ReadInteger(fp, "high_width", 0, 640);
-		Config->high_height = ReadInteger(fp, "high_height", 0, 480);
-		printf ("High image size %d x %d pixels\n", Config->high_width, Config->high_height);
+		Config->SSDVHigh = ReadInteger(fp, "high", -1, 0, 2000);
+		printf ("Image size changes at %dm\n", Config->SSDVHigh);
+		
+		Config->Channels[RTTY_CHANNEL].ImageWidthWhenLow = ReadInteger(fp, "low_width", -1, 0, 320);
+		Config->Channels[RTTY_CHANNEL].ImageHeightWhenLow = ReadInteger(fp, "low_height", -1, 0, 240);
+		printf ("RTTY Low image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenLow, Config->Channels[0].ImageHeightWhenLow);
+		
+		Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh = ReadInteger(fp, "high_width", -1, 0, 640);
+		Config->Channels[RTTY_CHANNEL].ImageHeightWhenHigh = ReadInteger(fp, "high_height", -1, 0, 480);
+		printf ("RTTY High image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh, Config->Channels[0].ImageHeightWhenHigh);
 
-		Config->image_packets = ReadInteger(fp, "image_packets", 0, 4);
-		printf ("1 Telemetry packet every %d image packets\n", Config->image_packets);
+		Config->Channels[RTTY_CHANNEL].ImagePackets = ReadInteger(fp, "image_packets", -1, 0, 4);
+		printf ("RTTY: 1 Telemetry packet every %d image packets\n", Config->Channels[RTTY_CHANNEL].ImagePackets);
+		
+		Config->Channels[RTTY_CHANNEL].ImagePeriod = ReadInteger(fp, "image_period", -1, 0, 60);
+		printf ("RTTY: %d seconds between photographs\n", Config->Channels[RTTY_CHANNEL].ImagePeriod);
+
+		// Set up full-size image parameters		
+		Config->Channels[FULL_CHANNEL].ImageWidthWhenLow = ReadInteger(fp, "full_low_width", -1, 0, 640);
+		Config->Channels[FULL_CHANNEL].ImageHeightWhenLow = ReadInteger(fp, "full_low_height", -1, 0, 480);
+		printf ("Full Low image size %d x %d pixels\n", Config->Channels[FULL_CHANNEL].ImageWidthWhenLow, Config->Channels[FULL_CHANNEL].ImageHeightWhenLow);
+		
+		Config->Channels[FULL_CHANNEL].ImageWidthWhenHigh = ReadInteger(fp, "full_high_width", -1, 0, 2592);
+		Config->Channels[FULL_CHANNEL].ImageHeightWhenHigh = ReadInteger(fp, "full_high_height", -1, 0, 1944);
+		printf ("Full High image size %d x %d pixels\n", Config->Channels[FULL_CHANNEL].ImageWidthWhenHigh, Config->Channels[FULL_CHANNEL].ImageHeightWhenHigh);
+
+		Config->Channels[FULL_CHANNEL].ImagePeriod = ReadInteger(fp, "full_image_period", -1, 0, 60);
+		printf ("Full size: %d seconds between photographs\n", Config->Channels[FULL_CHANNEL].ImagePeriod);
+		
+		Config->Channels[FULL_CHANNEL].ImagePackets = Config->Channels[FULL_CHANNEL].ImagePeriod > 0;
+		Config->Channels[FULL_CHANNEL].Enabled = Config->Channels[FULL_CHANNEL].ImagePackets;
+	}
+
+	Config->GPSSource[0] = '\0';
+	ReadString(fp, "gps_source", -1, Config->GPSSource, sizeof(Config->GPSSource), 0);
+
+	// Landing prediction
+	Config->EnableLandingPrediction = 0;
+	ReadBoolean(fp, "landing_prediction", -1, 0, &(Config->EnableLandingPrediction));
+	if (Config->EnableLandingPrediction)
+	{
+		Config->cd_area = ReadFloat(fp, "cd_area", -1, 0, 0.66);
+		Config->payload_weight = ReadFloat(fp, "payload_weight", -1, 0, 0.66);
+		ReadString(fp, "prediction_id", -1, Config->PredictionID, sizeof(Config->PredictionID), 0);
 	}
 	
-	if (ReadInteger(fp, "SDA", 0, 0))
+	// I2C overrides.  Only needed for users own boards, or for some of our prototypes
+	if (ReadInteger(fp, "SDA", -1, 0, 0))
 	{
-		Config->SDA = ReadInteger(fp, "SDA", 0, 0);
+		Config->SDA = ReadInteger(fp, "SDA", -1, 0, 0);
 		printf ("I2C SDA overridden to %d\n", Config->SDA);
 	}
 
-	if (ReadInteger(fp, "SCL", 0, 0))
+	if (ReadInteger(fp, "SCL", -1, 0, 0))
 	{
-		Config->SCL = ReadInteger(fp, "SCL", 0, 0);
+		Config->SCL = ReadInteger(fp, "SCL", -1, 0, 0);
 		printf ("I2C SCL overridden to %d\n", Config->SCL);
 	}
 	
-	
-	Config->InfoMessageCount = ReadInteger(fp, "info_messages", 0, -1);
+	Config->InfoMessageCount = ReadInteger(fp, "info_messages", -1, 0, -1);
 
-	// APRS settings
-	ReadString(fp, "APRS_Callsign", Config->APRS_Callsign, sizeof(Config->APRS_Callsign), 0);
-	Config->APRS_ID = ReadInteger(fp, "APRS_ID", 0, 11);
-	Config->APRS_Period = ReadInteger(fp, "APRS_Period", 0, 1);
-	Config->APRS_Offset = ReadInteger(fp, "APRS_Offset", 0, 0);
-	Config->APRS_Random = ReadInteger(fp, "APRS_Random", 0, 0);
-	if (*(Config->APRS_Callsign) && Config->APRS_ID && Config->APRS_Period)
-	{
-		printf("APRS enabled for callsign %s:%d every %d minute%s with offset %ds\n", Config->APRS_Callsign, Config->APRS_ID, Config->APRS_Period, Config->APRS_Period > 1 ? "s" : "", Config->APRS_Offset);
-	}
+	LoadAPRSConfig(fp, Config);
+	
+	LoadLoRaConfig(fp, Config);
 	
 	fclose(fp);
 }
@@ -331,10 +285,13 @@ void SetMTX2Frequency(char *FrequencyString)
 	{
 		tcgetattr(fd, &options);
 
-		options.c_cflag &= ~CSTOPB;
 		cfsetispeed(&options, B9600);
 		cfsetospeed(&options, B9600);
+		
+		options.c_cflag &= ~CSTOPB;
+		options.c_cflag &= ~CSIZE;
 		options.c_cflag |= CS8;
+		
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
 		options.c_iflag &= ~IXON;
@@ -407,9 +364,10 @@ void SetNTX2BFrequency(char *FrequencyString)
 	{
 		tcgetattr(fd, &options);
 
-		options.c_cflag &= ~CSTOPB;
 		cfsetispeed(&options, B4800);
 		cfsetospeed(&options, B4800);
+
+		options.c_cflag &= ~CSTOPB;
 		options.c_cflag |= CS8;
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
@@ -492,10 +450,18 @@ int OpenSerialPort(void)
 		options.c_cc[VMIN]  = 0;
 		options.c_cc[VTIME] = 10;
 
-		options.c_cflag |= CSTOPB;
 		cfsetispeed(&options, Config.TxSpeed);
 		cfsetospeed(&options, Config.TxSpeed);
-		options.c_cflag |= CS8;
+		options.c_cflag |= CSTOPB;
+		options.c_cflag &= ~CSIZE;
+		if (Config.TxSpeed == B50)
+		{
+			options.c_cflag |= CS7;
+		}
+		else
+		{
+			options.c_cflag |= CS8;
+		}
 		options.c_oflag &= ~ONLCR;
 		options.c_oflag &= ~OPOST;
 		options.c_iflag &= ~IXON;
@@ -541,109 +507,38 @@ void SendSentence(int fd, char *TxLine)
 	
 }
 
-int FindAndConvertImage(void)
-{
-	size_t LargestFileSize;
-	char LargestFileName[100], FileName[100], CommandLine[2000];
-	DIR *dp;
-	struct dirent *ep;
-	struct stat st;
-	int Done;
-	
-	LargestFileSize = 0;
-	Done = 0;
-	
-	dp = opendir(SSDVFolder);
-	if (dp != NULL)
-	{
-		while (ep = readdir (dp))
-		{
-			if (strstr(ep->d_name, ".jpg") != NULL)
-			{
-				sprintf(FileName, "%s/%s", SSDVFolder, ep->d_name);
-				stat(FileName, &st);
-				if (st.st_size > LargestFileSize)
-				{
-					LargestFileSize = st.st_size;
-					strcpy(LargestFileName, FileName);
-				}
-			}
-		}
-		(void) closedir (dp);
-	}
-
-	if (LargestFileSize > 0)
-	{
-		char Date[20], SavedImageFolder[100];
-		time_t now;
-		struct tm *t;
-	
-		printf("Found file %s to convert\n", LargestFileName);
-		
-		// Now convert the file
-		FileNumber++;
-		FileNumber = FileNumber & 255;
-		sprintf(CommandLine, "ssdv -e -c %.6s -i %d %6s /home/pi/pits/tracker/snap.bin", Config.PayloadID, FileNumber, LargestFileName);
-		system(CommandLine);
-		
-		// And move those pesky image files
-		now = time(NULL);
-		t = localtime(&now);
-		strftime(Date, sizeof(Date)-1, "%d_%m_%Y", t);		
-
-		sprintf(SavedImageFolder, "%s/%s", SSDVFolder, Date);
-		if (stat(SavedImageFolder, &st) == -1)
-		{
-			mkdir(SavedImageFolder, 0777);
-		}
-		system(CommandLine);
-		sprintf(CommandLine, "mv %s/*.jpg %s", SSDVFolder, SavedImageFolder);
-		system(CommandLine);
-
-		Done = 1;
-	}
-	
-	return (LargestFileSize > 0);
-}
-
-int SendImage(int fd)
+int SendRTTYImage()
 {
     unsigned char Buffer[256];
     size_t Count;
     int SentSomething = 0;
-	// int fd;
+	int fd;
 
-    if (ImageFP == NULL)
+	StartNewFileIfNeeded(RTTY_CHANNEL);
+	
+    if (Config.Channels[RTTY_CHANNEL].ImageFP != NULL)
     {
-		if (FindAndConvertImage())
-		{
-			ImageFP = fopen("/home/pi/pits/tracker/snap.bin", "r");
-		}
-        Records = 0;
-    }
-
-    if (ImageFP != NULL)
-    {
-        Count = fread(Buffer, 1, 256, ImageFP);
+        Count = fread(Buffer, 1, 256, Config.Channels[RTTY_CHANNEL].ImageFP);
         if (Count > 0)
         {
-            printf("Record %d, %d bytes\r\n", ++Records, Count);
+            printf("RTTY: SSDV record %d of %d\r\n", ++Config.Channels[RTTY_CHANNEL].SSDVRecordNumber, Config.Channels[RTTY_CHANNEL].SSDVTotalRecords);
+
+			Config.Channels[RTTY_CHANNEL].ImagePacketCount++;
 
 			// if ((fd = OpenSerialPort()) >= 0)
-			{
-				printf("Sending image packet ...\n");
-				write(fd, Buffer, Count);
-				tcsetattr(fd, TCSAFLUSH, &options);
-				printf("Sent\n");
-				// close(fd);
-			}
+			// {
+
+			write(fd, Buffer, Count);
+
+			// close(fd);
+			// }
 
             SentSomething = 1;
         }
         else
         {
-            fclose(ImageFP);
-            ImageFP = NULL;
+            fclose(Config.Channels[RTTY_CHANNEL].ImageFP);
+            Config.Channels[RTTY_CHANNEL].ImageFP = NULL;
         }
     }
 
@@ -696,7 +591,21 @@ int main(void)
 	char Sentence[100], Command[100];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
+	
+	if (prog_count("tracker") > 1)
+	{
+		printf("\nThe tracker program is already running!\n");
+		printf("It is started automatically, with the camera script, when the Pi boots.\n\n");
+		printf("If you just want the tracker software to run, it already is,\n");
+		printf("and its output can be viewed on a monitor attached to a Pi video socket.\n\n");
+		printf("If instead you want to view the tracker output via ssh,\n");
+		printf("then you should first stop it by typing the following command:\n");
+		printf("	sudo killall tracker\n\n");
+		printf("and then restart manually with\n");
+		printf("	sudo ./tracker\n\n");
+		exit(1);
+	}
 	
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
@@ -725,13 +634,13 @@ int main(void)
 		printf("RPi Model A or B\n");
 		printf("PITS Board\n\n");
 
-		Config.LED_OK = 4;
-		Config.LED_Warn = 11;
+		Config.LED_OK = 11;
+		Config.LED_Warn = 4;
 		
 		Config.SDA = 5;
 		Config.SCL = 6;
 	}
-	
+
 	LoadConfigFile(&Config);
 
 	if (Config.DisableMonitor)
@@ -739,16 +648,22 @@ int main(void)
 		system("/opt/vc/bin/tvservice -off");
 	}
 	
-	if (FileExists("/boot/clear.txt"))
+	if (Config.Camera)
 	{
-		// remove SSDV and other camera images, plus log files
+		if (FileExists("/boot/clear.txt"))
+		{
+			// remove SSDV and other camera images, plus log files
 
-		printf("Removing existing photo files\n");
-		remove("gps.txt");
-		remove("telemetry.txt");
-		remove("/boot/clear.txt");
-		system("rm -rf /home/pi/pits/tracker/download/*.jpg");
-		system("rm -rf /home/pi/pits/tracker/keep/*.jpg");
+			printf("Removing existing photo files\n");
+			remove("gps.txt");
+			remove("telemetry.txt");
+			remove("/boot/clear.txt");
+			system("rm -rf /home/pi/pits/tracker/download/*.jpg");
+			system("rm -rf /home/pi/pits/tracker/keep/*.jpg");
+		}
+		
+		// Remove any old SSDV files
+		system("rm -f snap*.bin");
 	}
 
 	GPS.Time = 0.0;
@@ -763,6 +678,9 @@ int main(void)
 	GPS.BatteryVoltage = 0.0;
 	GPS.BMP180Temperature = 0.0;
 	GPS.Pressure = 0.0;
+	GPS.MaximumAltitude = 0.0;
+	GPS.DS18B20Count = 0;
+
 	
 	// Set up I/O
 	if (wiringPiSetup() == -1)
@@ -781,33 +699,62 @@ int main(void)
 		digitalWrite (UBLOX_ENABLE, 0);
 	}
 
-	if ((fd = OpenSerialPort()) < 0)
+	if (!Config.DisableRTTY)
 	{
-		printf("Cannot open serial port - check documentation!\n");
-		exit(1);
-	}
-	// close(fd);
+		if (*Config.Frequency)
+		{
+			SetFrequency(Config.Frequency);
+		}
+	
+		fd = OpenSerialPort();
 
-	if (*Config.Frequency)
-	{
-		SetFrequency(Config.Frequency);
+		digitalWrite (NTX2B_ENABLE, 1);
 	}
-
-	// Switch off the radio till it's configured
-	digitalWrite (NTX2B_ENABLE, 1);
-		
+	
 	// Set up DS18B20
 	system("sudo modprobe w1-gpio");
 	system("sudo modprobe w1-therm");
 	
-	// SPI for ADC
+	// SPI for ADC (older boards), LoRa add-on board
 	system("gpio load spi");
 
-	if (stat(SSDVFolder, &st) == -1)
+	// SSDV Folders
+	sprintf(Config.Channels[0].SSDVFolder, "%s/RTTY", SSDVFolder);
+	*Config.Channels[1].SSDVFolder = '\0';										// No folder for APRS images
+	sprintf(Config.Channels[2].SSDVFolder, "%s/LORA0", SSDVFolder);
+	sprintf(Config.Channels[3].SSDVFolder, "%s/LORA1", SSDVFolder);
+	sprintf(Config.Channels[4].SSDVFolder, "%s/FULL", SSDVFolder);
+	
+	if (Config.Camera)
 	{
-		mkdir(SSDVFolder, 0777);
-	}	
+		// Create SSDV Folders
+		if (stat(SSDVFolder, &st) == -1)
+		{
+			mkdir(SSDVFolder, 0777);
+		}	
+	
+		for (i=0; i<5; i++)
+		{
+			if (*Config.Channels[i].SSDVFolder)
+			{
+				if (stat(Config.Channels[i].SSDVFolder, &st) == -1)
+				{
+					mkdir(Config.Channels[i].SSDVFolder, 0777);
+				}
+			}
+		}
 
+		// Filenames for SSDV
+		for (i=0; i<5; i++)
+		{
+			sprintf(Config.Channels[i].take_pic, "take_pic_%d", i);
+			sprintf(Config.Channels[i].current_ssdv, "ssdv_%d.bin", i);
+			sprintf(Config.Channels[i].next_ssdv, "ssdv_%d.nxt", i);
+			sprintf(Config.Channels[i].convert_file, "convert_%d", i);
+			sprintf(Config.Channels[i].ssdv_done, "ssdv_done_%d", i);
+		}
+	}
+	
 	if (pthread_create(&GPSThread, NULL, GPSLoop, &GPS))
 	{
 		fprintf(stderr, "Error creating GPS thread\n");
@@ -820,6 +767,14 @@ int main(void)
 		{
 			fprintf(stderr, "Error creating APRS thread\n");
 			return 1;
+		}
+	}
+	
+	if (Config.LoRaDevices[0].InUse || Config.LoRaDevices[1].InUse)
+	{
+		if (pthread_create(&LoRaThread, NULL, LoRaLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating LoRa thread\n");
 		}
 	}
 	
@@ -874,6 +829,14 @@ int main(void)
 		}
 	}
 
+	if (Config.EnableLandingPrediction)
+	{
+		if (pthread_create(&PredictionThread, NULL, PredictionLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating prediction thread\n");
+		}
+	}	
+	
 	if (Config.InfoMessageCount < 0)
 	{
 		// Default number depends on baud rate
@@ -888,13 +851,24 @@ int main(void)
 
 	while (1)
 	{	
-		BuildSentence(Sentence, ++Sentence_Counter, &GPS);
-		
-		SendSentence(fd, Sentence);
-		
-		for (i=0; i< ((GPS.Altitude > Config.high) ? Config.image_packets : 1); i++)
+		if (Config.DisableRTTY)
 		{
-			SendImage(fd);
+			delayMilliseconds (200);
+		}
+		else
+		{
+			BuildSentence(Sentence, ++Sentence_Counter, &GPS);
+			
+			SendSentence(fd, Sentence);
+			
+			if (Config.Channels[RTTY_CHANNEL].ImagePackets > 0)
+			{
+
+				for (i=0; i< ((GPS.Altitude > Config.SSDVHigh) ? Config.Channels[RTTY_CHANNEL].ImagePackets : 1); i++)
+				{
+					SendRTTYImage();
+				}
+			}
 		}
 	}
 }

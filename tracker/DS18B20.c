@@ -38,7 +38,7 @@ void *DS18B20Loop(void *some_void_ptr)
 			{
 				if (strlen(dp->d_name) > 3)
 				{
-					if (dp->d_name[2] == '-')
+					if ((dp->d_name[0] != 'W') && (dp->d_name[2] == '-'))
 					{
 						sprintf(filename, "%s/%s/w1_slave", folder, dp->d_name);
 						if ((fp = fopen(filename, "r")) != NULL)

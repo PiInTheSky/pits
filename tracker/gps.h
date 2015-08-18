@@ -2,10 +2,10 @@
 
 struct TGPS
 {
-	long Time;
+	long Time;						// Time as read from GPS, as an integer but 12:13:14 is 121314
 	long Seconds;					// Time in seconds since midnight.  Used for APRS timing, and LoRa timing in TDM mode
 	float Longitude, Latitude;
-	unsigned int Altitude;
+	unsigned int Altitude, MaximumAltitude;
 	unsigned int Satellites;
 	int Speed;
 	int Direction;
@@ -15,6 +15,7 @@ struct TGPS
 	float Pressure;
 	float BoardCurrent;
 	int DS18B20Count;
+	float PredictedLongitude, PredictedLatitude;
 } GPS;
 
 

@@ -192,35 +192,6 @@ void make_and_write_bit(FILE *f, UL cycles_per_bit, UL baud, UL lfreq, UL hfreq,
 	static int8_t bc = 0;
 	static int8_t High = 0;
 			
-	/*
-	if (Bit)
-	{
-		// Stay with same frequency, but only for a max of 5 in a row
-		bc++;
-	}
-	else
-	{
-		// 0 means swap frequency
-		High = !High;
-		bc = 0;
-	}
-	
-	make_and_write_freq(f, cycles_per_bit, baud, lfreq, hfreq, High);
-
-	if (BitStuffing)
-	{
-		if (bc >= 4)
-		{	
-			High = !High;
-			make_and_write_freq(f, cycles_per_bit, baud, lfreq, hfreq, High);
-			bc = 0;
-		}
-	}
-	else
-	{
-		bc = 0;
-	}
-	*/
 	if(BitStuffing)
 	{
 		if(bc >= 5)
@@ -297,12 +268,6 @@ void makeafsk(UL freq, UL baud, UL lfreq, UL hfreq, unsigned char *Message, int 
 		fwrite(m, 1, 44, f);
 		
 		// Write preamble
-		/*
-		for (i=0; i< preamble_length; i++)
-		{
-			make_and_write_freq(f, cycles_per_bit, baud, lfreq, hfreq, 0);
-		}
-		*/
 		
 		for (i=0; i<flags_before; i++)
 		{
@@ -371,6 +336,20 @@ void SendAPRS(struct TGPS *GPS)
 	// printf("Length=%d\n\n", length);
 
 	makeafsk(48000, 1200, 1200, 2200, frame, length);
+}
+
+void LoadAPRSConfig(FILE *fp, struct TConfig *Config)
+{
+	// APRS settings
+	ReadString(fp, "APRS_Callsign", -1, Config->APRS_Callsign, sizeof(Config->APRS_Callsign), 0);
+	Config->APRS_ID = ReadInteger(fp, "APRS_ID", -1, 0, 11);
+	Config->APRS_Period = ReadInteger(fp, "APRS_Period", -1, 0, 1);
+	Config->APRS_Offset = ReadInteger(fp, "APRS_Offset", -1, 0, 0);
+	Config->APRS_Random = ReadInteger(fp, "APRS_Random", -1, 0, 0);
+	if (*(Config->APRS_Callsign) && Config->APRS_ID && Config->APRS_Period)
+	{
+		printf("APRS enabled for callsign %s:%d every %d minute%s with offset %ds\n", Config->APRS_Callsign, Config->APRS_ID, Config->APRS_Period, Config->APRS_Period > 1 ? "s" : "", Config->APRS_Offset);
+	}
 }
 
 int TimeToSendAPRS(long GPS_Seconds, long APRS_Period, long APRS_Offset)

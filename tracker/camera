@@ -2,29 +2,28 @@
 echo Camera script ...
 
 cd /home/pi/pits/tracker
-mkdir -p keep
-
 
 while [ 1 ]
 do
+	for i in {0..4}
+	do
+		if [ -e take_pic_$i ]
+		then
+			current_date=$(date "+%d_%m_%y")
+			current_time=$(date "+%H_%M_%S")
+			echo Running script take_pic_$i ...
+			sudo ./take_pic_$i $current_time $current_date
+			sudo rm -f take_pic_$i
+		fi
+		
+		if [ -e convert_$i ]
+		then
+			current_date=$(date "+%d_%m_%y")
+			echo Running script convert_$i ...
+			sudo ./convert_$i $current_date
+			sudo rm -f convert_$i
+		fi
+	done
 
-	echo Taking photo for SSDV
-	if [ -e take_pic ]
-	then
-		# i=$[i+1]
-		current_time=$(date "+%H_%M_%S")
-		./take_pic $current_time
-	fi
-
-	# echo sleeping ...
-	sleep 15
-
-	echo Taking photo for storage
-	current_date=$(date "+%d_%m_%y")
-	current_time=$(date "+%H_%M_%S")
-	mkdir -p keep/$current_date
-	raspistill -st -w 2592 -h 1944 -t 3000 -ex auto -mm matrix -o keep/$current_date/$current_time.jpg
-
-	# echo sleeping ...
-	sleep 15
+	sleep 1
 done

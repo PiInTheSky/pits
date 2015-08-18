@@ -355,9 +355,11 @@ float FixPosition(float Position)
 
 void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 {
-    float utc_time, latitude, longitude, hdop, altitude, speed, course;
-	int lock, satellites, date;
-	char active, ns, ew, units, speedstring[16], coursestring[16];
+	static SystemTimeHasBeenSet=0;
+	
+    float utc_time, latitude, longitude, hdop, altitude;
+	int lock, satellites;
+	char active, ns, ew, units, timestring[16], speedstring[16], *course, *date, restofline[80], *ptr;
 	long Hours, Minutes, Seconds;
 	
     if (GPSChecksumOK(Buffer, Count))
@@ -392,16 +394,42 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 		else if (strncmp(Buffer+3, "RMC", 3) == 0)
 		{
 			speedstring[0] = '\0';
-			coursestring[0] = '\0';
-			if (sscanf(Buffer+7, "%f,%c,%f,%c,%f,%c,%[^','],%[^','],%d", &utc_time, &active, &latitude, &ns, &longitude, &ew, speedstring, coursestring, &date) >= 7)
-			{
+			if (sscanf(Buffer+7, "%[^,],%c,%f,%c,%f,%c,%[^,],%s", timestring, &active, &latitude, &ns, &longitude, &ew, speedstring, restofline) >= 7)
+			{			
 				// $GPRMC,124943.00,A,5157.01557,N,00232.66381,W,0.039,,200314,,,A*6C
 
-				speed = atof(speedstring);
-				course = atof(coursestring);
+				ptr = restofline;
 				
-				GPS->Speed = (int)speed;
-				GPS->Direction = (int)course;
+				course = strsep(&ptr, ",");
+
+				date = strsep(&ptr, ",");
+				
+				GPS->Speed = (int)atof(speedstring);
+				GPS->Direction = (int)atof(course);
+
+				if ((atof(timestring) > 0) && !SystemTimeHasBeenSet)
+				{
+					struct tm tm;
+					char timedatestring[32];
+					time_t t;
+
+					// Now create a tm structure from our date and time
+					memset(&tm, 0, sizeof(struct tm));
+					sprintf(timedatestring, "%c%c-%c%c-20%c%c %c%c:%c%c:%c%c",
+											date[0], date[1], date[2], date[3], date[4], date[5],
+											timestring[0], timestring[1], timestring[2], timestring[3], timestring[4], timestring[5]);
+					strptime(timedatestring, "%d-%m-%Y %H:%M:%S", &tm);
+				
+					t = mktime(&tm);
+					if (stime(&t) == -1)
+					{
+						printf("Failed to set system time\n");
+					}
+					else
+					{
+						SystemTimeHasBeenSet = 1;
+					}
+				}
 			}
 
 			if (Config.EnableGPSLogging)

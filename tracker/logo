@@ -1,0 +1,3 @@
+echo Processing image $2 for channel $1
+#
+convert $2 pi_logo_small.png -geometry +20+20 -composite ssdv.jpg
