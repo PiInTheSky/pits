@@ -658,8 +658,7 @@ int main(void)
 			remove("gps.txt");
 			remove("telemetry.txt");
 			remove("/boot/clear.txt");
-			system("rm -rf /home/pi/pits/tracker/download/*.jpg");
-			system("rm -rf /home/pi/pits/tracker/keep/*.jpg");
+			system("rm -rf /home/pi/pits/tracker/images/*.jpg");
 		}
 		
 		// Remove any old SSDV files
