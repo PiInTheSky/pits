@@ -62,7 +62,7 @@ int NewBoard(void)
 					printf ("RPi %s", line);
 					if (boardRev < 0)
 					{
-						boardRev = ((strstr(line, "0010") != NULL) || (strstr(line, "0012") != NULL) || (strstr(line, "0013") != NULL));	// B+ or A+
+						boardRev = ((strstr(line, "0015") != NULL) || (strstr(line, "0010") != NULL) || (strstr(line, "0012") != NULL) || (strstr(line, "0013") != NULL));	// B+ or A+
 					}
 				}
 			}
