@@ -507,12 +507,11 @@ void SendSentence(int fd, char *TxLine)
 	
 }
 
-int SendRTTYImage()
+int SendRTTYImage(int fd)
 {
     unsigned char Buffer[256];
     size_t Count;
     int SentSomething = 0;
-	int fd;
 
 	StartNewFileIfNeeded(RTTY_CHANNEL);
 	
@@ -529,6 +528,8 @@ int SendRTTYImage()
 			// {
 
 			write(fd, Buffer, Count);
+
+			tcsetattr(fd, TCSAFLUSH, &options);
 
 			// close(fd);
 			// }
@@ -865,7 +866,7 @@ int main(void)
 
 				for (i=0; i< ((GPS.Altitude > Config.SSDVHigh) ? Config.Channels[RTTY_CHANNEL].ImagePackets : 1); i++)
 				{
-					SendRTTYImage();
+					SendRTTYImage(fd);
 				}
 			}
 		}
