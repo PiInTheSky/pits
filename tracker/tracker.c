@@ -552,18 +552,26 @@ void SendIPAddress(int fd)
     struct sockaddr_in *sa;
     char *addr;
 
-    getifaddrs (&ifap);
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr->sa_family==AF_INET) {
-            sa = (struct sockaddr_in *) ifa->ifa_addr;
-            addr = inet_ntoa(sa->sin_addr);
-			if (strcmp(addr, "127.0.0.1") != 0)
+    if (getifaddrs(&ifap) == 0)
+	{
+		for (ifa = ifap; ifa; ifa = ifa->ifa_next)
+		{
+			if (ifa->ifa_addr != NULL)
 			{
-				char Sentence[200];
-				
-				sprintf(Sentence, "Interface %s has IP Address: %s\n", ifa->ifa_name, addr);
-				printf(Sentence);
-				SendSentence(fd, Sentence);
+				// Family is known (which it isn't for a VPN)
+				if (ifa->ifa_addr->sa_family==AF_INET)
+				{
+					sa = (struct sockaddr_in *) ifa->ifa_addr;
+					addr = inet_ntoa(sa->sin_addr);
+					if (strcmp(addr, "127.0.0.1") != 0)
+					{
+						char Sentence[200];
+						
+						sprintf(Sentence, "Interface %s has IP Address: %s\n", ifa->ifa_name, addr);
+						printf(Sentence);
+						SendSentence(fd, Sentence);
+					}
+				}
 			}
         }
     }
