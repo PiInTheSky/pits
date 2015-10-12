@@ -17,6 +17,11 @@ Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-ima
 CHANGE LOG
 ==========
 
+12/10/2015
+
+- Added "camera_settings" option for config file
+- Fixed IP check which faulted when Pi on a VPN
+
 18/08/2015
 
 - Merged in LoRa code (LoRa branch is now defunct)

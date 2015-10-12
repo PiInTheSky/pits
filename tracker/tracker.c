@@ -164,7 +164,7 @@ void LoadConfigFile(struct TConfig *Config)
 		printf ("RTTY Payload ID = '%s'\n", Config->Channels[RTTY_CHANNEL].PayloadID);
 		
 		ReadString(fp, "frequency", -1, Config->Frequency, sizeof(Config->Frequency), 0);
-		
+
 		BaudRate = ReadInteger(fp, "baud", -1, 1, 300);
 		
 		Config->Channels[RTTY_CHANNEL].BaudRate = BaudRate;
@@ -196,6 +196,12 @@ void LoadConfigFile(struct TConfig *Config)
 	printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
 	if (Config->Camera)
 	{
+		ReadString(fp, "camera_settings", -1, Config->CameraSettings, sizeof(Config->CameraSettings), 0);
+		if (Config->CameraSettings)
+		{
+			printf ("Adding custom camera parameters '%s' to raspistill calls\n", Config->CameraSettings);
+		}
+
 		Config->SSDVHigh = ReadInteger(fp, "high", -1, 0, 2000);
 		printf ("Image size changes at %dm\n", Config->SSDVHigh);
 		

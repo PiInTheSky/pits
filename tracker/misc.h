@@ -88,6 +88,7 @@ struct TConfig
 	// Camera
 	int Camera;	
 	int SSDVHigh;
+	char CameraSettings[80];
 	
 	// Extra devices
 	int EnableBMP085;

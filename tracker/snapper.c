@@ -168,11 +168,11 @@ void *CameraLoop(void *some_void_ptr)
 							{
 								// Full size images are saved in dated folder names
 								fprintf(fp, "mkdir -p %s/$2\n", Config.Channels[Channel].SSDVFolder);
-								fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix -o %s/$2/$1.jpg\n", width, height, Config.Channels[Channel].SSDVFolder);
+								fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s/$2/$1.jpg\n", width, height, Config.CameraSettings, Config.Channels[Channel].SSDVFolder);
 							}
 							else
 							{
-								fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix -o %s/$1.jpg\n", width, height, Config.Channels[Channel].SSDVFolder);
+								fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s/$1.jpg\n", width, height, Config.CameraSettings, Config.Channels[Channel].SSDVFolder);
 							}
 							
 							fclose(fp);

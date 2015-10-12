@@ -1,2 +1,0 @@
-mkdir -p /home/pi/pits/tracker/images/FULL/$2
-raspistill -st -w 640 -h 480 -t 3000 -ex auto -mm matrix -o /home/pi/pits/tracker/images/FULL/$2/$1.jpg
