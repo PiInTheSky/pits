@@ -47,12 +47,16 @@
 #include "aprs.h"
 #include "lora.h"
 #include "prediction.h"
+#include <pigpio.h> 
 
 struct TConfig Config;
 
 // Pin allocations.  Do not change unless you're using your own hardware
+// WIRING PI PINS
 #define NTX2B_ENABLE	0
 #define UBLOX_ENABLE	2
+// BCM PINS
+#define NTX2B_ENABLE_BCM	17
 
 FILE *ImageFP;
 int Records, FileNumber;
@@ -278,81 +282,55 @@ void SetMTX2Frequency(char *FrequencyString)
 	char _mtx2command[17];
 	int fd;
 	double Frequency;
-	struct termios options;
-	uint8_t setNMEAoff[] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00, 0x80, 0x25, 0x00, 0x00, 0x07, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA0, 0xA9           };
-
-	// First disable transmitter
-	digitalWrite (NTX2B_ENABLE, 0);
-	pinMode (NTX2B_ENABLE, OUTPUT);
-	delayMilliseconds (200);
+	int i, pulses, wave_id;
+	char *str;
 	
-	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
-	if (fd >= 0)
+	if (strlen(FrequencyString) < 3)
 	{
-		tcgetattr(fd, &options);
-
-		cfsetispeed(&options, B9600);
-		cfsetospeed(&options, B9600);
-		
-		options.c_cflag &= ~CSTOPB;
-		options.c_cflag &= ~CSIZE;
-		options.c_cflag |= CS8;
-		
-		options.c_oflag &= ~ONLCR;
-		options.c_oflag &= ~OPOST;
-		options.c_iflag &= ~IXON;
-		options.c_iflag &= ~IXOFF;
-		options.c_lflag &= ~ECHO;
-		options.c_cc[VMIN]  = 0;
-		options.c_cc[VTIME] = 10;
-		
-		tcsetattr(fd, TCSANOW, &options);
-
-		// Tel UBlox to shut up
-		write(fd, setNMEAoff, sizeof(setNMEAoff));
-		tcsetattr(fd, TCSAFLUSH, &options);
-		close(fd);
-		delayMilliseconds (1000);
-		
-		fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
-		
-		if (strlen(FrequencyString) < 3)
-		{
-			// Convert channel number to frequency
-			Frequency = strtol(FrequencyString, NULL, 16) * 0.003125 + 434.05;
-		}
-		else
-		{
-			Frequency = atof(FrequencyString);
-		}
-		
-		printf("Frequency set to %8.4fMHz\n", Frequency);
-		
-		_mtx2comp=(Frequency+0.0015)/6.5;
-		_mtx2int=_mtx2comp;
-		_mtx2fractional = ((_mtx2comp-_mtx2int)+1) * 524288;
-		snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
-		printf("MTX2 command  is %s\n", _mtx2command);
-
-		// Let enable line float (but Tx will pull it up anyway)
-		delayMilliseconds (200);
-		pinMode (NTX2B_ENABLE, INPUT);
-		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-		delayMilliseconds (20);
-
-		write(fd, _mtx2command, strlen(_mtx2command)); 
-		tcsetattr(fd, TCSAFLUSH, &options);
-		delayMilliseconds (50);
-
-		close(fd);
-
-		// Switch on the radio
-		delayMilliseconds (100);
-		digitalWrite (NTX2B_ENABLE, 1);
-		pinMode (NTX2B_ENABLE, OUTPUT);
+		// Convert channel number to frequency
+		Frequency = strtol(FrequencyString, NULL, 16) * 0.003125 + 434.05;
+		printf("Channel %s\n", FrequencyString);
 	}
-}
+	else
+	{
+		Frequency = atof(FrequencyString);
+		printf("Frequency %s\n", FrequencyString);
+	}
 
+	printf("MTX2 Frequency to be set to %8.4fMHz\n", Frequency);
+
+	_mtx2comp=(Frequency+0.0015)/6.5;
+	_mtx2int=_mtx2comp;
+	_mtx2fractional = ((_mtx2comp-_mtx2int)+1) * 524288;
+	snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
+	printf("MTX2 command  is %s\n", _mtx2command);
+	
+	if (gpioInitialise() < 0)
+	{
+		printf("pigpio initialisation failed.\n");
+		return;
+	}
+
+	gpioSetMode(NTX2B_ENABLE_BCM, PI_OUTPUT);	
+	
+	gpioWaveAddNew();
+	
+	gpioWaveAddSerial(NTX2B_ENABLE_BCM, 9600, 8, 2, 0, strlen(_mtx2command), _mtx2command);
+	
+	wave_id = gpioWaveCreate();
+
+	if (wave_id >= 0)
+	{
+		gpioWaveTxSend(wave_id, 0);
+
+		while (gpioWaveTxBusy())
+		{
+			time_sleep(0.1);
+		}
+	}
+	
+	gpioTerminate();
+}
 void SetNTX2BFrequency(char *FrequencyString)
 {
 	int fd, Frequency;
