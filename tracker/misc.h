@@ -84,9 +84,10 @@ struct TConfig
 	// Misc settings
 	int DisableMonitor;
 	int InfoMessageCount;
+	int BoardType;
 	
 	// Camera
-	int Camera;	
+	int Camera;
 	int SSDVHigh;
 	char CameraSettings[80];
 	
@@ -142,6 +143,7 @@ int FileExists(char *filename);
 int ReadBooleanFromString(FILE *fp, char *keyword, char *searchword);
 int ReadBoolean(FILE *fp, char *keyword, int Channel, int NeedValue, int *Result);
 void ReadString(FILE *fp, char *keyword, int Channel, char *Result, int Length, int NeedValue);
+int ReadCameraType(FILE *fp, char *keyword);
 int ReadInteger(FILE *fp, char *keyword, int Channel, int NeedValue, int DefaultValue);
 double ReadFloat(FILE *fp, char *keyword, int Channel, int NeedValue, double DefaultValue);
 void AppendCRC(char *Temp);

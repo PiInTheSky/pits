@@ -7,4 +7,6 @@ tracker/keep
 *.jpg
 telemetry.txt
 gps.txt
+take*.txt
+convert*.txt
 *.bin

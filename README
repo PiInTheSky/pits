@@ -14,8 +14,40 @@ INSTALLING
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
+USB WEBCAM
+==========
+
+The Pi Zero does not have a CSI camera port, so if you want to use it with a camera then you'll need to add a USB webcam.  To do that, you need to install fswebcam:
+
+	sudo apt-get install fswebcam
+
+and you need to edit /boot/pisky.txt and change the "camera" line to be:
+
+	Camera=U
+
+(U/F/u/f all work to enable USB/fswebcam; N/n is for no camera, Y/y/1/TC/c is for CSI camera).
+
+DEVTREE
+=======
+
+If you wish to enable devtree (e.g. to use PITS with the Astro Pi board) then you will need to make a small edit to enable the DS18B20 temperature sensor, otherwise all readings will be zero.  Search for "Pi DS18B20 device tree" for information.
+
+RASPBIAN JESSIE
+===============
+
+We do not recommend the full version of Jessie as it starts the graphical X environment by default, and uses a lot of SD card space.  Instead, install the "Lite" version.
+
+The Lite version does not include "git" so you will need to install that yourself, with:
+
+	sudo apt-get install git
+
 CHANGE LOG
 ==========
+
+28/11/2015
+
+- Suport for Pi Zero
+- Support for USB webcam via fswebcam
 
 12/10/2015
 

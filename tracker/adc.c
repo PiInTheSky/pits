@@ -14,6 +14,7 @@
 
 #include "gps.h"
 #include "adc.h"
+#include "misc.h"
 
 int AnalogRead (int chan)
 {
@@ -64,7 +65,7 @@ void *ADCLoop(void *some_void_ptr)
 		GPS->BatteryVoltage = BatteryVoltage;
 		// printf("BatteryVoltage = %lf\n", BatteryVoltage);
 
-		if (NewBoard())
+		if (Config.BoardType)
 		{
 			BoardCurrent = ReadADC(1, 14);
 			GPS->BoardCurrent = BoardCurrent;

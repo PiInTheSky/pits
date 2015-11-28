@@ -35,7 +35,7 @@ void WriteLog(char *FileName, char *Buffer)
 	}
 }
 
-int NewBoard(void)
+int GetBoardType(void)
 {
 	FILE *cpuFd ;
 	char line [120] ;
@@ -59,10 +59,22 @@ int NewBoard(void)
 				
 				if (strncmp (line, "Revision", 8) == 0)
 				{
-					printf ("RPi %s", line);
 					if (boardRev < 0)
 					{
-						boardRev = ((strstr(line, "0015") != NULL) || (strstr(line, "0010") != NULL) || (strstr(line, "0012") != NULL) || (strstr(line, "0013") != NULL));	// B+ or A+
+						printf ("RPi %s", line);
+						if ((strstr(line, "0015") != NULL) ||
+							(strstr(line, "0010") != NULL) ||
+							(strstr(line, "0012") != NULL) ||
+							(strstr(line, "0013") != NULL))
+						{
+							// B+ or A+
+							boardRev = 1;
+						}
+						else if (strstr(line, "900092") != NULL)
+						{
+							// Zero
+							boardRev = 3;
+						}
 					}
 				}
 			}
@@ -165,7 +177,8 @@ void ReadString(FILE *fp, char *keyword, int Channel, char *Result, int Length, 
 		if (strcasecmp(FullKeyWord, token) == 0)
 		{
 			value = strtok(NULL, "\n");
-			strcpy(Result, value);
+			strncpy(Result, value, Length);
+			if (Length) Result[Length-1] = '\0';
 			return;
 		}
 	}
@@ -203,6 +216,25 @@ int ReadInteger(FILE *fp, char *keyword, int Channel, int NeedValue, int Default
 	}
 	
 	return DefaultValue;
+}
+
+int ReadCameraType(FILE *fp, char *keyword)
+{
+	char Temp[64];
+	
+	ReadString(fp, keyword, -1, Temp, sizeof(Temp), 0);
+
+	if ((*Temp == '1') || (*Temp == 'Y') || (*Temp == 'y') || (*Temp == 't') || (*Temp == 'T'))
+	{
+		return 1;		// CSI (raspistill) Camera
+	}
+	
+	if ((*Temp == 'F') || (*Temp == 'f') || (*Temp == 'U') || (*Temp == 'u'))
+	{
+		return 2;		// USB (fswebcam) Camera
+	}
+	
+	return 0;
 }
 
 int ReadBoolean(FILE *fp, char *keyword, int Channel, int NeedValue, int *Result)

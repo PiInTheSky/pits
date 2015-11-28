@@ -84,7 +84,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	ExtraFields2[0] = '\0';
 	ExtraFields3[0] = '\0';
 	
-	if (NewBoard())
+	if (Config.BoardType)
 	{
 		sprintf(ExtraFields1, ",%.0f", GPS->BoardCurrent * 1000);
 	}
@@ -140,6 +140,7 @@ speed_t BaudToSpeed(int baud)
 
 void LoadConfigFile(struct TConfig *Config)
 {
+	const char* CameraTypes[3] = {"None", "CSI - raspistill", "USB - fswebcam"};
 	FILE *fp;
 	int BaudRate;
 	char *filename = "/boot/pisky.txt";
@@ -196,8 +197,11 @@ void LoadConfigFile(struct TConfig *Config)
 	
 	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", -1, 0, 1);
 
-	ReadBoolean(fp, "camera", -1, 0, &(Config->Camera));
-	printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
+	// ReadBoolean(fp, "camera", -1, 0, &(Config->Camera));
+	// printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
+	Config->Camera = ReadCameraType(fp, "camera");
+	printf ("Camera (%s) %s\n", CameraTypes[Config->Camera], Config->Camera ? "Enabled" : "Disabled");
+	
 	if (Config->Camera)
 	{
 		ReadString(fp, "camera_settings", -1, Config->CameraSettings, sizeof(Config->CameraSettings), 0);
@@ -408,7 +412,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 
 void SetFrequency(char *Frequency)
 {
-	if (NewBoard())
+	if (Config.BoardType)
 	{
 		SetMTX2Frequency(Frequency);
 		SetMTX2Frequency(Frequency);
@@ -603,9 +607,15 @@ int main(void)
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
 
-	if (NewBoard())
+	Config.BoardType = GetBoardType();
+	
+	if (Config.BoardType)
 	{
-		if (NewBoard() == 2)
+		if (Config.BoardType == 3)
+		{
+			printf("RPi Zero\n");
+		}
+		else if (Config.BoardType == 2)
 		{
 			printf("RPi 2 B\n");
 		}
@@ -685,7 +695,7 @@ int main(void)
 	digitalWrite (NTX2B_ENABLE, 0);
 		
 	// Switch on the GPS
-	if (!NewBoard())
+	if (Config.BoardType == 0)
 	{
 		pinMode (UBLOX_ENABLE, OUTPUT);
 		digitalWrite (UBLOX_ENABLE, 0);

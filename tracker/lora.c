@@ -280,7 +280,7 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 	ExtraFields3[0] = '\0';
 	ExtraFields4[0] = '\0';
 	
-	if (NewBoard())
+	if (Config.BoardType)
 	{
 		sprintf(ExtraFields1, ",%.0f", GPS->BoardCurrent * 1000);
 	}
@@ -677,7 +677,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 	const char *LoRaModes[5] = {"slow", "SSDV", "repeater", "turbo", "TurboX"};
 	int Channel;
 	
-	if (NewBoard())
+	if (Config->BoardType)
 	{
 		// For dual card.  These are for the second prototype (earlier one will need overrides)
 
