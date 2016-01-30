@@ -89,6 +89,7 @@ void *I2CADCLoop(void *some_void_ptr)
 			double BatteryVoltage, BoardCurrent;
 			
 			BatteryVoltage = ReadI2CADC(fd, 0, 33.024);
+			BatteryVoltage = BatteryVoltage / 2 * 4.9;
 			GPS->BatteryVoltage = BatteryVoltage;
 			// printf("Battery Voltage = %lf\n", BatteryVoltage);
 			
