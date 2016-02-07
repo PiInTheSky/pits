@@ -41,7 +41,7 @@ unsigned int I2CAnalogRead (int fd, int chan)
 	unsigned int value;
 	
 	wiringPiI2CWrite(fd, 0x80 +			// bit  7   -  1 = start single-shot conversion
-						 (chan << 6) +	// bits 6,5 - 00 = channel 1, 01 = channel 2
+						 (chan << 5) +	// bits 6,5 - 00 = channel 1, 01 = channel 2
 						 0x00 +			// bit 4    -  0 = single shot mode
 						 0x04 +			// bits 3,2 - 10 = 16-bit data (14 measurements per second)
 						 0x00);			// bits 1,0 - 00 = Gain x1
@@ -67,7 +67,7 @@ double ReadI2CADC(int fd, int chan, double FullScale)
 	for (i=0; i<10; i++)
 	{
 		RawValue = I2CAnalogRead(fd, chan);
-		Value += (double)RawValue * FullScale / 65536;
+		Value += (double)RawValue * FullScale / 8192;
 	}
 	
 	return Value / 10;
@@ -88,15 +88,11 @@ void *I2CADCLoop(void *some_void_ptr)
 		{
 			double BatteryVoltage, BoardCurrent;
 			
-			BatteryVoltage = ReadI2CADC(fd, 0, 33.024);
-			// Correct voltage measurement due to 
-			// redesign of underdesigned voltage divider
-			// 29.01.2016 DF2ET
-			BatteryVoltage = BatteryVoltage / 2 * 4.9;
+			BatteryVoltage = ReadI2CADC(fd, 0, 10.03);
 			GPS->BatteryVoltage = BatteryVoltage;
 			// printf("Battery Voltage = %lf\n", BatteryVoltage);
 			
-			BoardCurrent = ReadI2CADC(fd, 1, 1.4);
+			BoardCurrent = ReadI2CADC(fd, 1, 3413);
 			GPS->BoardCurrent = BoardCurrent;
 			// printf("Board Current = %lf\n", BoardCurrent);
 
