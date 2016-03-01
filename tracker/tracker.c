@@ -638,22 +638,19 @@ int main(void)
 		system("/opt/vc/bin/tvservice -off");
 	}
 	
-	if (Config.Camera)
+	if (FileExists("/boot/clear.txt"))
 	{
-		if (FileExists("/boot/clear.txt"))
-		{
-			// remove SSDV and other camera images, plus log files
+		// remove SSDV and other camera images, plus log files
 
-			printf("Removing existing photo files\n");
-			remove("gps.txt");
-			remove("telemetry.txt");
-			remove("/boot/clear.txt");
-			system("rm -rf /home/pi/pits/tracker/images/*.jpg");
-		}
-		
-		// Remove any old SSDV files
-		system("rm -f snap*.bin");
+		printf("Removing existing photo files\n");
+		remove("gps.txt");
+		remove("telemetry.txt");
+		remove("/boot/clear.txt");
+		system("rm -rf /home/pi/pits/tracker/images/*");
 	}
+	
+	// Remove any old SSDV files
+	system("rm -f snap*.bin");
 
 	GPS.Time = 0.0;
 	GPS.Longitude = 0.0;
