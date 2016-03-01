@@ -610,20 +610,7 @@ int main(void)
 	Config.BoardType = GetBoardType();
 	
 	if (Config.BoardType)
-	{
-		if (Config.BoardType == 3)
-		{
-			printf("RPi Zero\n");
-		}
-		else if (Config.BoardType == 2)
-		{
-			printf("RPi 2 B\n");
-		}
-		else
-		{
-			printf("RPi Model A+ or B+\n");
-		}
-		
+	{	
 		printf("PITS+ Board\n\n");
 		
 		Config.LED_OK = 25;

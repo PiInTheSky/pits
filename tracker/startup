@@ -1,5 +1,6 @@
 #!/bin/bash
-sudo stty -ixon < /dev/ttyAMA0
+gpio mode 0 output
+gpio write 0 1
 cd /home/pi/pits/tracker
 sudo modprobe w1-gpio
 sudo modprobe w1_therm
@@ -7,4 +8,3 @@ sudo modprobe i2c-dev
 sudo -b ./send_aprs
 sudo ./camera &
 sudo ./tracker
-

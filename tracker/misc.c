@@ -48,6 +48,7 @@ int GetBoardType(void)
 		{
 			while (fgets (line, 120, cpuFd) != NULL)
 			{
+				/*
 				if (strncmp (line, "Hardware", 8) == 0)
 				{
 					printf ("RPi %s", line);
@@ -56,24 +57,63 @@ int GetBoardType(void)
 						boardRev = 2;
 					}
 				}
+				*/
 				
 				if (strncmp (line, "Revision", 8) == 0)
 				{
 					if (boardRev < 0)
 					{
 						printf ("RPi %s", line);
-						if ((strstr(line, "0015") != NULL) ||
-							(strstr(line, "0010") != NULL) ||
-							(strstr(line, "0012") != NULL) ||
-							(strstr(line, "0013") != NULL))
+						
+						if ((strstr(line, "0002") != NULL) ||
+							(strstr(line, "0003") != NULL) ||
+							(strstr(line, "0004") != NULL) ||
+							(strstr(line, "0005") != NULL) ||
+							(strstr(line, "0006") != NULL) ||
+							(strstr(line, "000d") != NULL) ||
+							(strstr(line, "000e") != NULL) ||
+							(strstr(line, "000f") != NULL))
 						{
-							// B+ or A+
+							printf("Model B\n");
+							boardRev = 0;
+						}
+						else if ((strstr(line, "0007") != NULL) ||
+							(strstr(line, "0008") != NULL) ||
+							(strstr(line, "0009") != NULL))
+						{
+							printf("Model A\n");
+							boardRev = 0;
+						}
+						else if (strstr(line, "0010") != NULL)
+						{
+							printf("Model B+\n");
 							boardRev = 1;
 						}
+						else if (strstr(line, "0011") != NULL)
+						{
+							printf("Compute Module\n");
+							boardRev = 1;
+						}
+						else if (strstr(line, "0012") != NULL)
+						{
+							printf("Model A+\n");
+							boardRev = 1;
+						}
+						else if ((strstr(line, "a01041") != NULL) ||
+							(strstr(line, "a21041") != NULL))
+						{
+							printf("Pi 2 Model B\n");
+							boardRev = 1;
+						}					
 						else if (strstr(line, "900092") != NULL)
 						{
-							// Zero
-							boardRev = 3;
+							printf("Pi Zero\n");
+							boardRev = 1;
+						}
+						else if (strstr(line, "a02082") != NULL)
+						{
+							printf("Pi 3 Model B\n");
+							boardRev = 1;
 						}
 					}
 				}
