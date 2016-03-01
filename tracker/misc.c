@@ -115,6 +115,11 @@ int GetBoardType(void)
 							printf("Pi 3 Model B\n");
 							boardRev = 1;
 						}
+						else
+						{
+							printf("Unknown Pi Revision\n");
+							boardRev = 1;
+						}
 					}
 				}
 			}
