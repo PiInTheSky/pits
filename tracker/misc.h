@@ -39,6 +39,31 @@ struct TLoRaDevice
 	int CallingCount;
 	int PacketsSinceLastCall;
 	int ReturnStateAfterCall;
+
+	// Uplink cycle
+	int UplinkPeriod;
+	int UplinkCycle;
+
+	// Uplink Messaging
+	int EnableMessageStatus;
+	int LastMessageNumber;
+	int MessageCount;
+	int LastPacketRSSI;
+	int LastPacketSNR;
+	int PacketCount;
+};
+
+struct TSSDVPackets
+{
+	int ImageNumber;
+	int NumberOfPackets;
+	unsigned char Packets[1024];
+};
+
+struct TRecentPacket
+{
+	int ImageNumber;
+	int PacketNumber;
 };
 
 // Structure for all possible radio devices
@@ -53,7 +78,7 @@ struct TChannel
 	int SendTelemetry;						// TRUE to send telemetry on this channel
 	char SSDVFolder[200];
 	int ImagePackets;						// Image packets per telemetry packet
-	int ImagePacketCount;					// Image packets since last telemetry packet
+	// int ImagePacketCount;					// Image packets since last telemetry packet
 	int ImageWidthWhenLow;
 	int ImageHeightWhenLow;
 	int ImageWidthWhenHigh;
@@ -62,16 +87,30 @@ struct TChannel
 	int	TimeSinceLastImage;
 	unsigned int BaudRate;
 	char take_pic[100];
-	char current_ssdv[100];
-	char next_ssdv[100];
+	// char current_ssdv[100];
+	// char next_ssdv[100];
 	char convert_file[100];
 	char ssdv_done[100];
+	char ssdv_filename[100];
 	FILE *ImageFP;
-	int SSDVRecordNumber;
-	int SSDVTotalRecords;
+	// int SSDVRecordNumber;
+	// int SSDVTotalRecords;
 	// int NextSSDVFileReady;
-	int SSDVFileNumber;
 	int ImagesRequested;
+	
+	// SSDV Variables
+	int SSDVImageNumber;					// Image number for last Tx
+	int SSDVPacketNumber;					// Packet number for last Tx
+	int SSDVNumberOfPackets;				// Number of packets in image currently being sent
+	int SSDVFileNumber;						// Number of latest converted image
+	
+	int SendMode;
+	
+	// SSDV Packet Log
+	struct TSSDVPackets SSDVPackets[3];	
+	
+	// SSDV File Information
+	int NumberOfPacketsInImage[256];
 };
 
 #define RTTY_CHANNEL 0
@@ -87,16 +126,19 @@ struct TConfig
 	int BoardType;
 	
 	// Camera
-	int Camera;
+	int Camera;	
 	int SSDVHigh;
 	char CameraSettings[80];
 	
 	// Extra devices
 	int EnableBMP085;
 	int ExternalDS18B20;
+	
 	// Logging
 	int EnableGPSLogging;
 	int EnableTelemetryLogging;
+	int TelemetryFileUpdate;		// Period in seconds
+	
 	
 	// LEDs
 	int LED_OK;
@@ -110,6 +152,7 @@ struct TConfig
 	int DisableRTTY;
 	char Frequency[8];
 	speed_t TxSpeed;
+	int QuietRTTYDuringLoRaUplink;
 
 	// APRS Settings
 	char APRS_Callsign[16];
@@ -117,6 +160,10 @@ struct TConfig
 	int APRS_Period;
 	int APRS_Offset;
 	int APRS_Random;
+	int APRS_Altitude;
+	int APRS_HighPath;
+	int APRS_Preemphasis;
+	int APRS_Telemetry;
 	
 	// LoRa Settings
 	struct TLoRaDevice LoRaDevices[2];
@@ -124,14 +171,19 @@ struct TConfig
 	// Radio channels
 	struct TChannel Channels[5];		// 0 is RTTY, 1 is APRS, 2/3 are LoRa, 4 is for full-size images
 	
-	// GPS faking
+	// GPS
 	char GPSSource[128];
+	int Power_Saving;
+	int Flight_Mode_Altitude;
 	
 	// Landing prediction
 	int EnableLandingPrediction;
 	float cd_area;
 	float payload_weight;
 	char PredictionID[16];
+	
+	// External data file
+	char ExternalDataFileName[100];
 };
 
 extern struct TConfig Config;
@@ -148,3 +200,4 @@ int ReadInteger(FILE *fp, char *keyword, int Channel, int NeedValue, int Default
 double ReadFloat(FILE *fp, char *keyword, int Channel, int NeedValue, double DefaultValue);
 void AppendCRC(char *Temp);
 void LogMessage(const char *format, ...);
+int devicetree(void);

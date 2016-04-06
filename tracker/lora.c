@@ -42,7 +42,6 @@ struct TBinaryPacket
 
 
 int Records, FileNumber;
-struct termios options;
 
 void writeRegister(int Channel, uint8_t reg, uint8_t val)
 {
@@ -257,28 +256,29 @@ int BuildLoRaCall(char *TxLine, int Channel)
 
 int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 {
+	static char ExternalFields[100];
+	static FILE *ExternalFile=NULL;
+	static int FirstTime=1;
     int Count, i, j;
     unsigned char c;
     unsigned int CRC, xPolynomial;
-	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32], ExtraFields5[32];
+	
+	if (FirstTime)
+	{
+		FirstTime = 0;
+		ExternalFields[0] = '\0';
+	}
 	
 	Config.Channels[LORA_CHANNEL+Channel].SentenceCounter++;
 	
-	sprintf(TimeBuffer1, "%06ld", GPS->Time);
-	TimeBuffer2[0] = TimeBuffer1[0];
-	TimeBuffer2[1] = TimeBuffer1[1];
-	TimeBuffer2[2] = ':';
-	TimeBuffer2[3] = TimeBuffer1[2];
-	TimeBuffer2[4] = TimeBuffer1[3];
-	TimeBuffer2[5] = ':';
-	TimeBuffer2[6] = TimeBuffer1[4];
-	TimeBuffer2[7] = TimeBuffer1[5];
-	TimeBuffer2[8] = '\0';
+	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
 	
 	ExtraFields1[0] = '\0';
 	ExtraFields2[0] = '\0';
 	ExtraFields3[0] = '\0';
 	ExtraFields4[0] = '\0';
+	ExtraFields5[0] = '\0';
 	
 	if (Config.BoardType)
 	{
@@ -299,7 +299,57 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 	{	
 		sprintf(ExtraFields4, ",%7.5lf,%7.5lf", GPS->PredictedLatitude, GPS->PredictedLongitude);
 	}
+	
+	if (Config.LoRaDevices[Channel].EnableMessageStatus)
+	{	
+		sprintf(ExtraFields5, ",%d,%d", Config.LoRaDevices[Channel].LastMessageNumber, Config.LoRaDevices[Channel].MessageCount);
+		// sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[Channel].LastPacketRSSI,
+										   // Config.LoRaDevices[Channel].LastPacketSNR,
+										   // Config.LoRaDevices[Channel].PacketCount);
+	}
+
+	// Read latest data from external file
+	if (Config.ExternalDataFileName[0])
+	{
+		if (ExternalFile == NULL)
+		{
+			{
+				// Try to open external file
+				ExternalFile = fopen(Config.ExternalDataFileName, "rt");
+			}
+		}
+		else
+		{
+			// Check if file has been deleted
+			if (access(Config.ExternalDataFileName, F_OK ) == -1 )
+			{
+				// It's been deleted
+				ExternalFile = NULL;
+			}
+		}
 		
+		if (ExternalFile)
+		{
+			char line[100];
+			
+			line[0] = '\0';
+			
+			// Keep reading lines till we get to the end
+			while (fgets(line, sizeof(line), ExternalFile) != NULL)
+			{
+			}
+			
+			if (line[0])
+			{
+				line[strcspn(line, "\n")] = '\0';
+				sprintf(ExternalFields, ",%s", line);
+			}
+			fseek(ExternalFile, 0, SEEK_END);
+			// clearerr(ExternalFile);
+		}
+	}
+
+	
     // sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f,%d,%d,%s%s%s%s%s",
             // Config.Channels[LORA_CHANNEL+Channel].PayloadID,
             // Config.Channels[LORA_CHANNEL+Channel].SentenceCounter,
@@ -319,11 +369,13 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 			// ExtraFields2,
 			// ExtraFields3,
 			// ExtraFields4);			
-			
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s%s%s",
+
+	// $$ASTROPI,4,16:49:36,51.95023,-2.54444,00151,0,0,13,29.8,0.0,0,0.0,25.7,995.0,40.3,4.0,121.0,5.0,0.0,-0.0,1.0
+	
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f,%3.1f%s%s%s%s%s%s",
             Config.Channels[LORA_CHANNEL+Channel].PayloadID,
             Config.Channels[LORA_CHANNEL+Channel].SentenceCounter,
-			TimeBuffer2,
+			TimeBuffer,
             GPS->Latitude,
             GPS->Longitude,
             GPS->Altitude,
@@ -335,10 +387,12 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 			ExtraFields1,
 			ExtraFields2,
 			ExtraFields3,
-			ExtraFields4);			
+			ExtraFields4,
+			ExternalFields,
+			ExtraFields5);
 			
 	AppendCRC(TxLine);
-	
+
 	if (Config.PredictionID[0])
 	{
 		char PredictionPayload[64];
@@ -347,7 +401,7 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 				"$$%s,%d,%s,%7.5lf,%7.5lf,%u",
 				Config.PredictionID,
 				Config.Channels[LORA_CHANNEL+Channel].SentenceCounter,
-				TimeBuffer2,
+				TimeBuffer,
 				GPS->PredictedLatitude,
 				GPS->PredictedLongitude,
 				0);
@@ -369,7 +423,7 @@ int BuildLoRaPositionPacket(char *TxLine, int Channel, struct TGPS *GPS)
 
 	BinaryPacket.PayloadIDs = 0xC0 | (OurID << 3) | OurID;
 	BinaryPacket.Counter = Config.Channels[LORA_CHANNEL+Channel].SentenceCounter;
-	BinaryPacket.Seconds = GPS->Seconds;
+	BinaryPacket.Seconds = GPS->SecondsInDay >> 1;
 	BinaryPacket.Latitude = GPS->Latitude;
 	BinaryPacket.Longitude = GPS->Longitude;
 	BinaryPacket.Altitude = GPS->Altitude;
@@ -384,7 +438,12 @@ int SendLoRaImage(int LoRaChannel)
     unsigned char Buffer[256];
     size_t Count;
     int SentSomething = 0;
+	int ResentPacket;
 
+	StartNewFileIfNeeded(LORA_CHANNEL + LoRaChannel);
+	
+	ResentPacket = ChooseImagePacketToSend(LORA_CHANNEL + LoRaChannel);
+	
     if (Config.Channels[LORA_CHANNEL+LoRaChannel].ImageFP != NULL)
     {
         Count = fread(Buffer, 1, 256, Config.Channels[LORA_CHANNEL+LoRaChannel].ImageFP);
@@ -392,13 +451,18 @@ int SendLoRaImage(int LoRaChannel)
         {
             // printf("Record %d, %d bytes\r\n", ++Records, Count);
 
-			Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount++;
+			// Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount++;
 			
-            printf("LORA%d: SSDV record %d of %d\r\n", LoRaChannel, ++Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVRecordNumber, Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVTotalRecords);
+			// if (((Config.Channels[LORA_CHANNEL+LoRaChannel].SSDVPacketNumber & 7) < 5) || ResentPacket)	// FOR REPEAT TESTING
+			{
+				AddImagePacketToRecentList(LORA_CHANNEL+LoRaChannel, Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVImageNumber, Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVPacketNumber);
+				
+				printf("LORA%d: SSDV %d packet %d of %d %s\r\n", LoRaChannel, Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVImageNumber, Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVPacketNumber, Config.Channels[LORA_CHANNEL + LoRaChannel].SSDVNumberOfPackets, ResentPacket ? "** RESEND **" : "");
+				
+				SendLoRaData(LoRaChannel, Buffer+1, 255);
 			
-			SendLoRaData(LoRaChannel, Buffer+1, 255);
-			
-            SentSomething = 1;
+				SentSomething = 1;
+			}
         }
         else
         {
@@ -410,41 +474,35 @@ int SendLoRaImage(int LoRaChannel)
     return SentSomething;
 }
 
-int TimeToSendOnThisChannel(int Channel, struct TGPS *GPS)
+int TDMTimeToSendOnThisChannel(int Channel, struct TGPS *GPS)
 {
-	long CycleSeconds;
-	
-	if (Config.LoRaDevices[Channel].CycleTime == 0)
-	{
-		// Not using time to decide when we can send
-		return 1;
-	}
-	
 	// Can't send till we have the time!
 	if (GPS->Satellites > 0)
 	{
 		// Can't Tx twice at the same time
-		if (GPS->Seconds != Config.LoRaDevices[Channel].LastTxAt)
+		if (GPS->SecondsInDay != Config.LoRaDevices[Channel].LastTxAt)
 		{
-			CycleSeconds = GPS->Seconds % Config.LoRaDevices[Channel].CycleTime;
+			long CycleSeconds;
+		
+			CycleSeconds = GPS->SecondsInDay % Config.LoRaDevices[Channel].CycleTime;
 	
 			if (CycleSeconds == Config.LoRaDevices[Channel].Slot)
 			{
-				Config.LoRaDevices[Channel].LastTxAt = GPS->Seconds;
+				Config.LoRaDevices[Channel].LastTxAt = GPS->SecondsInDay;
 				Config.LoRaDevices[Channel].SendRepeatedPacket = 0;
 				return 1;
 			}
 
 			if (Config.LoRaDevices[Channel].PacketRepeatLength && (CycleSeconds == Config.LoRaDevices[Channel].RepeatSlot))
 			{
-				Config.LoRaDevices[Channel].LastTxAt = GPS->Seconds;
+				Config.LoRaDevices[Channel].LastTxAt = GPS->SecondsInDay;
 				Config.LoRaDevices[Channel].SendRepeatedPacket = 1;
 				return 1;
 			}
 			
 			if (Config.LoRaDevices[Channel].UplinkRepeatLength && (CycleSeconds == Config.LoRaDevices[Channel].UplinkSlot))
 			{
-				Config.LoRaDevices[Channel].LastTxAt = GPS->Seconds;
+				Config.LoRaDevices[Channel].LastTxAt = GPS->SecondsInDay;
 				Config.LoRaDevices[Channel].SendRepeatedPacket = 2;
 				return 1;
 			}
@@ -454,12 +512,49 @@ int TimeToSendOnThisChannel(int Channel, struct TGPS *GPS)
 	
 	return 0;
 }
+	
+int UplinkTimeToSendOnThisChannel(int Channel, struct TGPS *GPS)
+{
+	// Can't use time till we have it
+	if (GPS->Satellites > 0)
+	{
+		long CycleSeconds;
+		
+		CycleSeconds = GPS->SecondsInDay % Config.LoRaDevices[Channel].UplinkCycle;
+	
+		if (CycleSeconds < Config.LoRaDevices[Channel].UplinkPeriod)
+		{
+			return 0;
+		}
+	}
+	
+	return 1;
+}
+	
+int TimeToSendOnThisChannel(int Channel, struct TGPS *GPS)
+{
+	if (Config.LoRaDevices[Channel].CycleTime > 0)
+	{
+		// TDM
+		return TDMTimeToSendOnThisChannel(Channel, GPS);
+	}
+	
+	if ((Config.LoRaDevices[Channel].UplinkPeriod > 0) && (Config.LoRaDevices[Channel].UplinkCycle > 0))
+	{
+		// Continuous with uplink
+		return UplinkTimeToSendOnThisChannel(Channel, GPS);
+	}
+	
+	// Continuous
+	return 1;
+}
 
 void startReceiving(int Channel)
 {
 	if (Config.LoRaDevices[Channel].InUse)
 	{
-	
+		printf ("Listening on channel %d\n", Channel);
+		
 		writeRegister(Channel, REG_DIO_MAPPING_1, 0x00);		// 00 00 00 00 maps DIO0 to RxDone
 	
 		writeRegister(Channel, REG_FIFO_RX_BASE_AD, 0);
@@ -477,6 +572,8 @@ int receiveMessage(int Channel, unsigned char *message)
 	int i, Bytes, currentAddr, x;
 	unsigned char data[257];
 
+	printf ("Rx channel %d\n", Channel);
+	
 	Bytes = 0;
 	
 	x = readRegister(Channel, REG_IRQ_FLAGS);
@@ -490,11 +587,13 @@ int receiveMessage(int Channel, unsigned char *message)
 		// CRC Error
 		writeRegister(Channel, REG_IRQ_FLAGS, 0x20);		// reset the crc flags
 		Config.LoRaDevices[Channel].BadCRCCount++;
+		printf ("CRC Error\n");
 	}
 	else
 	{
 		currentAddr = readRegister(Channel, REG_FIFO_RX_CURRENT_ADDR);
 		Bytes = readRegister(Channel, REG_RX_NB_BYTES);
+		printf ("*** Received %d bytes\n", Bytes);
 
 		// ChannelPrintf(Channel,  9, 1, "Packet   SNR = %4d   ", (char)(readRegister(Channel, REG_PACKET_SNR)) / 4);
 		// ChannelPrintf(Channel, 10, 1, "Packet  RSSI = %4d   ", readRegister(Channel, REG_PACKET_RSSI) - 157);
@@ -534,12 +633,26 @@ void CheckForPacketOnListeningChannels(void)
 					int Bytes;
 					
 					Bytes = receiveMessage(Channel, Message);
-					printf ("Rx %d bytes\n", Bytes);
 					
 					if (Bytes > 0)
 					{
+						int8_t SNR;
+						int RSSI;
+
+						SNR = readRegister(Channel, REG_PACKET_SNR);
+						SNR /= 4;
+						RSSI = readRegister(Channel, REG_PACKET_RSSI) - 157;
+						if (SNR < 0)
+						{
+							RSSI += SNR;
+						}
+						
+						Config.LoRaDevices[Channel].LastPacketSNR = SNR;
+						Config.LoRaDevices[Channel].LastPacketRSSI = RSSI;
+						Config.LoRaDevices[Channel].PacketCount++;
 						if (Message[0] == '$')
 						{
+							// Normal ASCII telemetry message sent by another balloon
 							char Payload[32];
 
 							printf("Balloon message\n");
@@ -560,6 +673,7 @@ void CheckForPacketOnListeningChannels(void)
 						}
 						else if ((Message[0] & 0xC0) == 0xC0)
 						{
+							// Binary telemetry message sent by another balloon
 							char Payload[32];
 							int SourceID, OurID;
 							
@@ -584,6 +698,7 @@ void CheckForPacketOnListeningChannels(void)
 						}
 						else if ((Message[0] & 0xC0) == 0x80)
 						{
+							// Uplink in TDM mode
 							int SenderID, TargetID, OurID;
 							
 							TargetID = Message[0] & 0x07;
@@ -609,6 +724,18 @@ void CheckForPacketOnListeningChannels(void)
 								Config.LoRaDevices[Channel].UplinkRepeatLength = sizeof(struct TBinaryPacket);
 								memcpy(Config.LoRaDevices[Channel].UplinkPacket, Message, Config.LoRaDevices[Channel].UplinkRepeatLength);
 							}
+						}
+						else if (Message[0] == '!')
+						{
+							// SSDV Uplink message
+							printf("SSDV uplink message %s", Message);
+							ProcessSSDVUplinkMessage(LORA_CHANNEL+Channel, Message);
+						}
+						else if (Message[0] == '#')
+						{
+							// SMS Uplink message
+							printf("SMS uplink message %s", Message);
+							ProcessSMSUplinkMessage(Channel, Message);
 						}
 						else
 						{
@@ -646,9 +773,10 @@ int CheckForFreeChannel(struct TGPS *GPS)
 					// delay(2000);
 				// }
 				
-				// Mow we test to see if we're doing TDM or not
-				// For TDM, if it's not a slot that we send in, then we should be in listening mode
-				// Otherwise, we just send
+				// Mow we test to see if we can send now
+				// If Tx is continuous, then the answer is yes, of course
+				// If there's an uplink period defined, we need to be outside that
+				// For TDM, we need to be inside one of our slots
 				
 				if (TimeToSendOnThisChannel(Channel, GPS))
 				{
@@ -657,11 +785,20 @@ int CheckForFreeChannel(struct TGPS *GPS)
 					
 					return Channel;
 				}
-				else if (Config.LoRaDevices[Channel].CycleTime > 0)
+				else if ((Config.LoRaDevices[Channel].CycleTime > 0) || (Config.LoRaDevices[Channel].UplinkCycle > 0))
 				{
 					// TDM system and not time to send, so we can listen
 					if (Config.LoRaDevices[Channel].LoRaMode == lmIdle)
 					{
+						if (Config.LoRaDevices[Channel].SpeedMode == 3)
+						{
+							// We're using a different frequency and mode for the uplink
+							setFrequency(Channel, 869.475);
+							SetLoRaParameters(Channel, EXPLICIT_MODE, ERROR_CODING_4_8, BANDWIDTH_125K, SPREADING_8, 0);
+							Config.LoRaDevices[Channel].ReturnStateAfterCall = 1;
+							printf("Set Uplink Mode\n");
+						}
+						
 						startReceiving(Channel);
 					}
 				}
@@ -679,7 +816,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 	
 	if (Config->BoardType)
 	{
-		// For dual card.  These are for the second prototype (earlier one will need overrides)
+		// For dual card.  These are for the production cards and second prototype (earlier one will need override - see below)
 
 		Config->LoRaDevices[0].DIO0 = 6;
 		Config->LoRaDevices[0].DIO5 = 5;
@@ -766,6 +903,14 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				printf("LORA%d Set To %s\n", Channel, Config->LoRaDevices[Channel].Binary ? "Binary" : "ASCII");
 			}
 
+			Config->LoRaDevices[Channel].UplinkPeriod = ReadInteger(fp, "LORA_Uplink_Period", Channel, 0, 0);			
+			Config->LoRaDevices[Channel].UplinkCycle = ReadInteger(fp, "LORA_Uplink_Cycle", Channel, 0, 0);			
+			ReadBoolean(fp, "LORA_Message_Status", Channel, 0, &(Config->LoRaDevices[Channel].EnableMessageStatus));
+			if ((Config->LoRaDevices[Channel].UplinkPeriod > 0) && (Config->LoRaDevices[Channel].UplinkCycle > 0))
+			{
+				printf("LORA%d uplink period %ds every %ds\n", Channel, Config->LoRaDevices[Channel].UplinkPeriod, Config->LoRaDevices[Channel].UplinkCycle);
+			}
+			
 			if (Config->LoRaDevices[Channel].SpeedMode == 4)
 			{
 				// Testing
@@ -784,7 +929,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				Config->LoRaDevices[Channel].Bandwidth = BANDWIDTH_250K;
 				Config->LoRaDevices[Channel].SpreadingFactor = SPREADING_7;
 				Config->LoRaDevices[Channel].LowDataRateOptimize = 0;		
-				Config->Channels[LORA_CHANNEL+Channel].BaudRate = 8000;		// check!!
+				Config->Channels[LORA_CHANNEL+Channel].BaudRate = 8000;
 			}
 			else if (Config->LoRaDevices[Channel].SpeedMode == 2)
 			{
@@ -922,7 +1067,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 	
 void *LoRaLoop(void *some_void_ptr)
 {
-	int ReturnCode, ImagePacketCount, fd, LoRaChannel;
+	int ReturnCode, LoRaChannel;
 	unsigned long Sentence_Counter = 0;
 	char Sentence[200], Command[100];
 	struct stat st = {0};
@@ -940,8 +1085,6 @@ void *LoRaLoop(void *some_void_ptr)
 		
 		Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall = Config.LoRaDevices[LoRaChannel].CallingCount;		// So we do the calling channel first
 	}
-
-	ImagePacketCount = 0;
 	
 	while (1)
 	{	
@@ -953,8 +1096,6 @@ void *LoRaLoop(void *some_void_ptr)
 		
 		if (LoRaChannel >= 0)
 		{
-			int MaxImagePackets;
-
 			if (Config.LoRaDevices[LoRaChannel].ReturnStateAfterCall)
 			{
 				double Frequency;
@@ -970,6 +1111,7 @@ void *LoRaLoop(void *some_void_ptr)
 								  Config.LoRaDevices[LoRaChannel].Bandwidth,
 								  Config.LoRaDevices[LoRaChannel]. SpreadingFactor,
 								  Config.LoRaDevices[LoRaChannel].LowDataRateOptimize);
+				printf("Reset after Uplink Mode\n");
 			}
 			
 			if (Config.LoRaDevices[LoRaChannel].SendRepeatedPacket == 2)
@@ -1010,14 +1152,12 @@ void *LoRaLoop(void *some_void_ptr)
 
 				Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall = 0;
 			}
-
 			else
-			{
-				StartNewFileIfNeeded(LORA_CHANNEL + LoRaChannel);
-				
-				MaxImagePackets = ((GPS->Altitude > Config.SSDVHigh) || (Config.Channels[LORA_CHANNEL+LoRaChannel].BaudRate > 2000)) ? Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePackets : 1;
-				
-				if ((Config.Channels[LORA_CHANNEL+LoRaChannel].ImageFP == NULL) || (Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount >= MaxImagePackets))
+			{			
+				int PacketLength, MaxImagePackets;
+
+				// if ((Config.Channels[LORA_CHANNEL+LoRaChannel].ImageFP == NULL) || (Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount >= MaxImagePackets))
+				if (Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode == 0)	// ImagePacketCount >= MaxImagePackets)
 				{
 					int PacketLength;
 
@@ -1036,15 +1176,21 @@ void *LoRaLoop(void *some_void_ptr)
 									
 					SendLoRaData(LoRaChannel, Sentence, PacketLength);		
 
-					Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount = 0;
+					// Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount = 0;
 					Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall++;
 				}
 				else
 				{
 					// Image packet
 					
-					// printf("LoRa%d: Send image packet\n", LoRaChannel);
 					SendLoRaImage(LoRaChannel);
+				}
+
+				MaxImagePackets = ((GPS->Altitude > Config.SSDVHigh) || (Config.Channels[LORA_CHANNEL+LoRaChannel].BaudRate > 2000)) ? Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePackets : 1;
+
+				if (++Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode > MaxImagePackets)
+				{
+					Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode = 0;
 				}
 			}
 		}

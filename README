@@ -2,12 +2,12 @@ PITS - Tracker software for the PITS board, for use in High Altitude Ballooning.
 
 Created by Dave Akerman (dave@daveakerman.com)
 
-This software is written for the Raspberry Pi model A+, B+ or V2 B,
-with the Pi In The Sky (PITS+) board from http://ava.upuaut.net/store/.
+This software is written for the Raspberry Pi model A+, B+ or V2 B, with the Pi In The Sky (PITS+) board from http://ava.upuaut.net/store/.
 Also works with the model A or B Pi and the earlier PITS board.
 
-Software support is provided for customers who have
-purchased a PITS or PITS+ board, for use with that board only.
+NOT fully tested with the V3 B Pi.  We do not recommend this board due to serial port changes.
+
+Software support is provided for customers who have purchased a PITS or PITS+ board, for use with that board only.
 
 INSTALLING
 ==========
@@ -41,8 +41,34 @@ The Lite version does not include "git" so you will need to install that yoursel
 
 	sudo apt-get install git
 
+(this is included in the instructions linked above).
+
+IMAGE PROCESSING
+================
+
+All images now include telemetry (longitude, latitude, altitude) in the JPEG comment field, but only if EXIV2 has been installed.
+
+It is therefore possible to overlay downloaded images with telemetry data, as text or graphics, using (for example) ImageMagick, and EXIV2 to extract the data from the JPEG being processed.  A sample script is provided.  The software will automatically execute a script called "process_image" if present.
+
+
 CHANGE LOG
 ==========
+
+- Ability to receive SMS-style messages uplinked from the ground via LoRa.  Messages are saved to a text file and can then be processed externally (e.g. by supplied Python script to display on a Pi Sense HAT)
+- Ability to include, in the LoRa telemetry, CSV data from an external file.  Sample Python script supplied to build that file from Sense HAT sensor data.
+- Ability to re-send SSDV packets, via LoRa, that were not received on the ground.  Uses a LoRa uplink message to define which packets need to be sent.
+- Can include uplink message status in LoRa telemetry.
+- Photo sizes forced to be no smaller than 320x240, to avoid limitation in raspistill program.
+- RTTY can be switched off (no data no carrier) during LoRa uplink periods.
+- Use of EXIV2 (if installed) to insert telemetry data into all stored JPEG images, in the JPEG comment field
+- Sample image processing script to extract telemetry from JPEG comment field, and insert into downloaded images as a text overlay, using ImageMagick
+
+01/03/2016
+==========
+
+- Test for latest Pi boards; assume PITS+ if not a known board
+- clear.txt now actually works
+- Better setting of MTX2 frequency
 
 28/11/2015
 
@@ -102,3 +128,4 @@ CHANGE LOG
   will be set to the closest channnel.
 - Camera filenames are now the system time
 - Camera images are now saved in dated folders
+

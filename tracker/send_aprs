@@ -1,7 +1,7 @@
 #!/bin/bash
 cd /home/pi/pits/tracker
 echo Redirect audio to GPIO ...
-gpio -g mode 18 pwm
+sudo ./pwm_switch
 echo Set APRS volume ...
 amixer set PCM -- 400
 

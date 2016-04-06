@@ -29,10 +29,8 @@ void *DS18B20Loop(void *some_void_ptr)
 
 	while (1)
 	{
-		// printf ("DS18B20...\n");
 		if ((dir = opendir(folder)) != NULL)
 		{
-			// printf("Opened folder\n");
 			SensorCount = 0;
 			while (((dp = readdir(dir)) != NULL) && (SensorCount < 2))
 			{
@@ -70,6 +68,7 @@ void *DS18B20Loop(void *some_void_ptr)
 				}
 			}
 			if (SensorCount > GPS->DS18B20Count) GPS->DS18B20Count = SensorCount;
+			// printf("%d DS18B20 sensors found\n", SensorCount);
 			
 			closedir(dir);
 		}
@@ -77,6 +76,24 @@ void *DS18B20Loop(void *some_void_ptr)
 		{
 			printf("COULD NOT OPEN DS18B20 FOLDER\n");
 		}
+		
+		if (GPS->DS18B20Count == 0)
+		{
+			// Use the GPU sensor instead
+			FILE *fp;
+			double T;
+			
+			fp = fopen ("/sys/class/thermal/thermal_zone0/temp", "r");
+			if (fp != NULL)
+			{
+				fscanf (fp, "%lf", &T);
+				GPS->DS18B20Temperature[0] = T / 1000;
+				// printf ("GPU temperature is %6.3f C.\n", GPS->DS18B20Temperature[0]);
+				GPS->DS18B20Count = 1;
+				fclose (fp);
+			}
+		}
+		
 		sleep(5);
 	}
 }

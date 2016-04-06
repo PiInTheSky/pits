@@ -16,14 +16,39 @@
 #include "gps.h"
 #include "misc.h"
 
+int SSDVPacketsToSend(int Channel)
+{
+	int i, j, Count;
+	
+	Count = 0;
+	for (i=0; i<2; i++)
+	{
+		for (j=0; j<Config.Channels[Channel].SSDVPackets[i].NumberOfPackets; j++)
+		{
+			if (Config.Channels[Channel].SSDVPackets[i].Packets[j])
+			{
+				Count++;
+			}
+		}
+	}
+		
+	// printf("Channel %d Count %d\n", Channel, Count);
+	
+	return Count;
+}
+
 int TimeTillImageCompleted(int Channel)
 {
+
 	// Quick check for the "full" channel - for this we aren't transmitting so we need to return a large number so we don't take a photo immediately
 	if (Channel == 4)
 	{
 		return 9999;
 	}
 	
+	return SSDVPacketsToSend(Channel) * 256 * 10 / Config.Channels[Channel].BaudRate;
+
+/*	
 	// If we aren't sending a file, then we need a new one NOW!
 	if (Config.Channels[Channel].ImageFP == NULL || 
 	    (Config.Channels[Channel].SSDVTotalRecords == 0))
@@ -39,9 +64,10 @@ int TimeTillImageCompleted(int Channel)
 	}
 		
 	return (Config.Channels[Channel].SSDVTotalRecords - Config.Channels[Channel].SSDVRecordNumber) * 256 * 10 / Config.Channels[Channel].BaudRate;
+*/	
 }
 
-void FindAndConvertImage(int Channel)
+void FindBestImageAndRequestConversion(int Channel)
 {
 	static char *SubFolder[4] = {"RTTY", "APRS", "LORA0", "LORA1"};
 	size_t LargestFileSize;
@@ -91,7 +117,10 @@ void FindAndConvertImage(int Channel)
 			Config.Channels[Channel].SSDVFileNumber++;
 			Config.Channels[Channel].SSDVFileNumber = Config.Channels[Channel].SSDVFileNumber & 255;
 
+			sprintf(Config.Channels[Channel].ssdv_filename, "ssdv_%d_%d.bin", Channel, Config.Channels[Channel].SSDVFileNumber);
+			
 			// External script for ImageMagick etc.
+			fprintf(fp, "rm -f ssdv.jpg\n");
 			fprintf(fp, "if [ -e process_image ]\n");
 			fprintf(fp, "then\n");
 			fprintf(fp, "	./process_image %d %s\n", Channel, LargestFileName);
@@ -99,14 +128,13 @@ void FindAndConvertImage(int Channel)
 			fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
 			fprintf(fp, "fi\n");
 			
-			fprintf(fp, "ssdv -e -c %.6s -i %d %s %s\n", Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg" /* LargestFileName */, Config.Channels[Channel].next_ssdv);
+			fprintf(fp, "ssdv -e -c %.6s -i %d %s %s\n", Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
 			fprintf(fp, "mkdir -p %s/$1\n", SSDVFolder);
 			fprintf(fp, "mv %s/*.jpg %s/$1\n", SSDVFolder, SSDVFolder);
 			fprintf(fp, "echo DONE > %s\n", Config.Channels[Channel].ssdv_done);
 			fclose(fp);
 			chmod(Config.Channels[Channel].convert_file, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 		}
-		// Config.Channels[Channel].NextSSDVFileReady = 1;
 	}
 }
 
@@ -133,8 +161,8 @@ void *CameraLoop(void *some_void_ptr)
 			{
 				// Channel using SSDV
 				
-				if ((++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod) || (TimeTillImageCompleted(Channel) < 15))
-
+				// if ((++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod) || (TimeTillImageCompleted(Channel) < 15))
+				if (++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod)
 				{
 					// Time to take a photo on this channel
 
@@ -150,6 +178,9 @@ void *CameraLoop(void *some_void_ptr)
 						width = Config.Channels[Channel].ImageWidthWhenLow;
 						height = Config.Channels[Channel].ImageHeightWhenLow;
 					}
+					
+					if (width < 320) width = 320;
+					if (height < 240) height = 240;					
 
 					// SSDV requires dimensions to be multiples of 16 pixels
 					width = (width / 16) * 16;
@@ -164,31 +195,66 @@ void *CameraLoop(void *some_void_ptr)
 						// Doesn't exist, so create it.  Script will run it next time it checks
 						if ((fp = fopen(filename, "wt")) != NULL)
 						{
+							char FileName[256];
+							int Mode;
+							
 							if (Channel == 4)
 							{
 								// Full size images are saved in dated folder names
 								fprintf(fp, "mkdir -p %s/$2\n", Config.Channels[Channel].SSDVFolder);
+
+								sprintf(FileName, "%s/$2/$1.jpg", Config.Channels[Channel].SSDVFolder);				
+
 								if (Config.Camera == 2)
 								{
-									fprintf(fp, "fswebcam -r %dx%d --no-banner %s/$2/$1.jpg\n", width, height, Config.Channels[Channel].SSDVFolder);
+									fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
 								}
 								else
 								{
-									fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s/$2/$1.jpg\n", width, height, Config.CameraSettings, Config.Channels[Channel].SSDVFolder);
+									fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
 								}
 							}
 							else
 							{
+								sprintf(FileName, "%s/$1.jpg", Config.Channels[Channel].SSDVFolder);
+
 								if (Config.Camera == 2)
 								{
-									fprintf(fp, "fswebcam -r %dx%d --no-banner %s/$1.jpg\n", width, height, Config.Channels[Channel].SSDVFolder);
+									fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
 								}
 								else
 								{
-									fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s/$1.jpg\n", width, height, Config.CameraSettings, Config.Channels[Channel].SSDVFolder);
+									fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
 								}
 							}
 							
+							// Add telemetry as comment in JPEG file
+							// Alt=34156;Lat=51.4321;Long=-2.4321;UTC=10:11:12;Ascent=5.1;Mode=1
+							if (GPS->AscentRate >= 2)
+							{
+								Mode = 1;
+							}
+							else if (GPS->AscentRate <= -2)
+							{
+								Mode = 2;
+							}
+							else if (GPS->Altitude >= Config.SSDVHigh)
+							{
+								Mode = 1;
+							}
+							else
+							{
+								Mode = 0;
+							}
+							fprintf(fp, "exiv2 -c'Alt=%ld;Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
+												GPS->Altitude,
+												GPS->Latitude,
+												GPS->Longitude,
+												GPS->Hours, GPS->Minutes, GPS->Seconds,
+												GPS->AscentRate,
+												Mode,
+												FileName);
+    
 							fclose(fp);
 							chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 							Config.Channels[Channel].ImagesRequested++;
@@ -198,17 +264,16 @@ void *CameraLoop(void *some_void_ptr)
 				
 				// Now check if we need to convert the "best" image before the current SSDV file is fully sent
 
-				// if ((Channel < 4) && Config.Channels[Channel].ImagesRequested && !Config.Channels[Channel].NextSSDVFileReady)
 				if (Channel < 4)
 				{
 					// Exclude full-size images - no conversion for those
-					// if (!Config.Channels[Channel].NextSSDVFileReady)
 					if (TimeTillImageCompleted(Channel) < 10)
 					{
 						// Need converted file soon
-						if (!FileExists(Config.Channels[Channel].convert_file))
+						if (!FileExists(Config.Channels[Channel].convert_file) && !FileExists(Config.Channels[Channel].ssdv_done))
 						{
-							FindAndConvertImage(Channel);
+							// Find image to use, then request conversion (done externally)
+							FindBestImageAndRequestConversion(Channel);
 						}
 					}
 				}

@@ -1,10 +1,11 @@
 #!/bin/bash
-gpio mode 0 output
-gpio write 0 1
 cd /home/pi/pits/tracker
 sudo modprobe w1-gpio
 sudo modprobe w1_therm
 sudo modprobe i2c-dev
 sudo -b ./send_aprs
 sudo ./camera &
+python3 sensors.py &
+python3 astro_led.py &
 sudo ./tracker
+

@@ -360,7 +360,6 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
     float utc_time, latitude, longitude, hdop, altitude;
 	int lock, satellites;
 	char active, ns, ew, units, timestring[16], speedstring[16], *course, *date, restofline[80], *ptr;
-	long Hours, Minutes, Seconds;
 	
     if (GPSChecksumOK(Buffer, Count))
 	{
@@ -373,15 +372,26 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 				// $GPGGA,124943.00,5157.01557,N,00232.66381,W,1,09,1.01,149.3,M,48.6,M,,*42
 				if (satellites >= 4)
 				{
-					GPS->Time = utc_time;
-					Hours = GPS->Time / 10000;
-					Minutes = (GPS->Time / 100) % 100;
-					Seconds = GPS->Time % 100;
-					GPS->Seconds = Hours * 3600 + Minutes * 60 + Seconds;					
+					unsigned long utc_seconds;
+					utc_seconds = utc_time;
+					GPS->Hours = utc_seconds / 10000;
+					GPS->Minutes = (utc_seconds / 100) % 100;
+					GPS->Seconds = utc_seconds % 100;
+					GPS->SecondsInDay = GPS->Hours * 3600 + GPS->Minutes * 60 + GPS->Seconds;					
 					GPS->Latitude = FixPosition(latitude);
 					if (ns == 'S') GPS->Latitude = -GPS->Latitude;
 					GPS->Longitude = FixPosition(longitude);
 					if (ew == 'W') GPS->Longitude = -GPS->Longitude;
+					
+					if (GPS->Altitude <= 0)
+					{
+						GPS->AscentRate = 0;
+					}
+					else
+					{
+						GPS->AscentRate = GPS->AscentRate * 0.7 + ((int32_t)altitude - GPS->Altitude) * 0.3;
+					}
+					// printf("Altitude=%ld, AscentRate = %.1lf\n", GPS->Altitude, GPS->AscentRate);
 					GPS->Altitude = altitude;
 				}
 				GPS->Satellites = satellites;
@@ -537,5 +547,4 @@ void *GPSLoop(void *some_void_ptr)
 		ResetI2C(&bb);
 	}
 }
-
 

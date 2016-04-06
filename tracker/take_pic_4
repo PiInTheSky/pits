@@ -1,0 +1,3 @@
+mkdir -p /home/pi/pits/tracker/images/FULL/$2
+raspistill -st -w 640 -h 480 -t 3000 -ex auto -mm matrix  -o /home/pi/pits/tracker/images/FULL/$2/$1.jpg
+exiv2 -c'Alt=153;Lat=51.95029;Long=-2.54442;UTC=18:13:50;Ascent=-0.1;Mode=0' /home/pi/pits/tracker/images/FULL/$2/$1.jpg

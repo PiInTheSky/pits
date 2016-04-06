@@ -36,6 +36,7 @@
 #include <sys/socket.h>
 #include <ifaddrs.h>
 #include <sys/statvfs.h>
+#include <pigpio.h> 
 #include "gps.h"
 #include "DS18B20.h"
 #include "adc.h"
@@ -47,7 +48,7 @@
 #include "aprs.h"
 #include "lora.h"
 #include "prediction.h"
-#include <pigpio.h> 
+#include "log.h"
 
 struct TConfig Config;
 
@@ -58,7 +59,6 @@ struct TConfig Config;
 // BCM PINS
 #define NTX2B_ENABLE_BCM	17
 
-FILE *ImageFP;
 int Records, FileNumber;
 struct termios options;
 char *SSDVFolder="/home/pi/pits/tracker/images";
@@ -67,18 +67,9 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
     int i, j;
     unsigned char c;
-	char TimeBuffer1[12], TimeBuffer2[10], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
-	sprintf(TimeBuffer1, "%06ld", GPS->Time);
-	TimeBuffer2[0] = TimeBuffer1[0];
-	TimeBuffer2[1] = TimeBuffer1[1];
-	TimeBuffer2[2] = ':';
-	TimeBuffer2[3] = TimeBuffer1[2];
-	TimeBuffer2[4] = TimeBuffer1[3];
-	TimeBuffer2[5] = ':';
-	TimeBuffer2[6] = TimeBuffer1[4];
-	TimeBuffer2[7] = TimeBuffer1[5];
-	TimeBuffer2[8] = '\0';
+	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
 	
 	ExtraFields1[0] = '\0';
 	ExtraFields2[0] = '\0';
@@ -99,11 +90,10 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
 	}
 	
-	// $$SKYCADEMY,128,11:55:53,51.95029,-2.54441,00136,0,0,5,0.0,2.9,36.0*AFF1
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f%s%s%s",
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f,%3.1f%s%s%s",
             Config.Channels[RTTY_CHANNEL].PayloadID,
             SentenceCounter,
-			TimeBuffer2,
+			TimeBuffer,
             GPS->Latitude,
             GPS->Longitude,
             GPS->Altitude,
@@ -183,11 +173,18 @@ void LoadConfigFile(struct TConfig *Config)
 		printf ("Radio baud rate = %d\n", BaudRate);
 	}
 	
+	// Logging
 	Config->EnableGPSLogging = ReadBooleanFromString(fp, "logging", "GPS");
 	if (Config->EnableGPSLogging) printf("GPS Logging enabled\n");
 
 	Config->EnableTelemetryLogging = ReadBooleanFromString(fp, "logging", "Telemetry");
 	if (Config->EnableTelemetryLogging) printf("Telemetry Logging enabled\n");
+	
+	Config->TelemetryFileUpdate = ReadInteger(fp, "telemetry_file_update", -1, 0, 0);
+	if (Config->TelemetryFileUpdate > 0)
+	{
+		printf("Telemetry file 'latest.txt' will be created every %d seconds\n", Config->TelemetryFileUpdate);
+	}
 	
 	ReadBoolean(fp, "enable_bmp085", -1, 0, &(Config->EnableBMP085));
 	if (Config->EnableBMP085)
@@ -197,8 +194,6 @@ void LoadConfigFile(struct TConfig *Config)
 	
 	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", -1, 0, 1);
 
-	// ReadBoolean(fp, "camera", -1, 0, &(Config->Camera));
-	// printf ("Camera %s\n", Config->Camera ? "Enabled" : "Disabled");
 	Config->Camera = ReadCameraType(fp, "camera");
 	printf ("Camera (%s) %s\n", CameraTypes[Config->Camera], Config->Camera ? "Enabled" : "Disabled");
 	
@@ -243,9 +238,14 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->Channels[FULL_CHANNEL].Enabled = Config->Channels[FULL_CHANNEL].ImagePackets;
 	}
 
+	// GPS
 	Config->GPSSource[0] = '\0';
 	ReadString(fp, "gps_source", -1, Config->GPSSource, sizeof(Config->GPSSource), 0);
-
+	ReadBoolean(fp, "Power_Saving", -1, 0, &(Config->Power_Saving));
+	printf("GPS Power Saving = %s\n", Config->Power_Saving ? "ON" : "OFF");
+	Config->Flight_Mode_Altitude = ReadInteger(fp, "Flight_Mode_Altitude", -1, 0, 1000);
+	if (Config->Flight_Mode_Altitude) printf("Switching GPS to flight mode above %d metres\n", Config->Flight_Mode_Altitude);
+	
 	// Landing prediction
 	Config->EnableLandingPrediction = 0;
 	ReadBoolean(fp, "landing_prediction", -1, 0, &(Config->EnableLandingPrediction));
@@ -255,6 +255,10 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->payload_weight = ReadFloat(fp, "payload_weight", -1, 0, 0.66);
 		ReadString(fp, "prediction_id", -1, Config->PredictionID, sizeof(Config->PredictionID), 0);
 	}
+	
+	// External data file
+	Config->ExternalDataFileName[0] = '\0';
+	ReadString(fp, "external_data", -1, Config->ExternalDataFileName, sizeof(Config->ExternalDataFileName), 0);
 	
 	// I2C overrides.  Only needed for users own boards, or for some of our prototypes
 	if (ReadInteger(fp, "SDA", -1, 0, 0))
@@ -270,6 +274,9 @@ void LoadConfigFile(struct TConfig *Config)
 	}
 	
 	Config->InfoMessageCount = ReadInteger(fp, "info_messages", -1, 0, -1);
+
+	Config->QuietRTTYDuringLoRaUplink = 0;
+	ReadBoolean(fp, "quiet_rtty_for_uplink", -1, 0, &(Config->QuietRTTYDuringLoRaUplink));
 
 	LoadAPRSConfig(fp, Config);
 	
@@ -335,6 +342,7 @@ void SetMTX2Frequency(char *FrequencyString)
 	
 	gpioTerminate();
 }
+
 void SetNTX2BFrequency(char *FrequencyString)
 {
 	int fd, Frequency;
@@ -503,14 +511,16 @@ int SendRTTYImage(int fd)
 
 	StartNewFileIfNeeded(RTTY_CHANNEL);
 	
+	ChooseImagePacketToSend(RTTY_CHANNEL);
+	
     if (Config.Channels[RTTY_CHANNEL].ImageFP != NULL)
     {
         Count = fread(Buffer, 1, 256, Config.Channels[RTTY_CHANNEL].ImageFP);
         if (Count > 0)
         {
-            printf("RTTY: SSDV record %d of %d\r\n", ++Config.Channels[RTTY_CHANNEL].SSDVRecordNumber, Config.Channels[RTTY_CHANNEL].SSDVTotalRecords);
+            printf("RTTY: SSDV record %d of %d\r\n", Config.Channels[RTTY_CHANNEL].SSDVPacketNumber++, Config.Channels[RTTY_CHANNEL].SSDVNumberOfPackets);
 
-			Config.Channels[RTTY_CHANNEL].ImagePacketCount++;
+			// Config.Channels[RTTY_CHANNEL].ImagePacketCount++;
 
 			// if ((fd = OpenSerialPort()) >= 0)
 			// {
@@ -581,14 +591,48 @@ void SendFreeSpace(int fd)
 	}
 }
 
+int LoRaChannelUploadNow(int Channel, struct TGPS *GPS, int PacketTime)
+{
+	// Can't use time till we have it
+	if ((Config.LoRaDevices[Channel].UplinkCycle > 0) && (Config.LoRaDevices[Channel].UplinkPeriod > 0))
+	{
+		int i;
+		long CycleSeconds;
+		
+		for (i=0; i<=PacketTime; i++)
+		{
+			CycleSeconds = (GPS->SecondsInDay+i) % Config.LoRaDevices[Channel].UplinkCycle;
+	
+			if (CycleSeconds < Config.LoRaDevices[Channel].UplinkPeriod)
+			{
+				return 1;
+			}
+		}
+	}
+	
+	return 0;
+}
+
+int LoRaUploadNow(struct TGPS *GPS, int PacketTime)
+{
+	// Can't use time till we have it
+	if (Config.QuietRTTYDuringLoRaUplink && (GPS->Satellites > 0)) // && (GPS->Altitude > Config.SSDVHigh))
+	{
+		return (LoRaChannelUploadNow(0, GPS, PacketTime) || LoRaChannelUploadNow(1, GPS, PacketTime));
+	}
+	
+	return 0;
+}
+
 int main(void)
 {
 	int fd, ReturnCode, i;
 	unsigned long Sentence_Counter = 0;
+	int ImagePacketCount, MaxImagePackets;
 	char Sentence[100], Command[100];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread, LogThread;
 	
 	if (prog_count("tracker") > 1)
 	{
@@ -608,10 +652,23 @@ int main(void)
 	printf(    "=======================================\n\n");
 
 	Config.BoardType = GetBoardType();
-	
+
 	if (Config.BoardType)
-	{	
-		printf("PITS+ Board\n\n");
+	{
+		if (Config.BoardType == 3)
+		{
+			printf("RPi Zero\n");
+		}
+		else if (Config.BoardType == 2)
+		{
+			printf("RPi 2 B\n");
+		}
+		else
+		{
+			printf("RPi Model A+ or B+\n");
+		}
+		
+		printf("PITS+ Board\n");
 		
 		Config.LED_OK = 25;
 		Config.LED_Warn = 24;
@@ -622,7 +679,7 @@ int main(void)
 	else
 	{
 		printf("RPi Model A or B\n");
-		printf("PITS Board\n\n");
+		printf("PITS Board\n");
 
 		Config.LED_OK = 11;
 		Config.LED_Warn = 4;
@@ -630,6 +687,8 @@ int main(void)
 		Config.SDA = 5;
 		Config.SCL = 6;
 	}
+	
+	printf("Device Tree is %s\n\n", devicetree() ? "enabled" : "disabled");
 
 	LoadConfigFile(&Config);
 
@@ -648,11 +707,14 @@ int main(void)
 		remove("/boot/clear.txt");
 		system("rm -rf /home/pi/pits/tracker/images/*");
 	}
-	
+		
 	// Remove any old SSDV files
-	system("rm -f snap*.bin");
+	system("rm -f ssdv*.bin");
 
-	GPS.Time = 0.0;
+	GPS.SecondsInDay = 0;
+	GPS.Hours = 0;
+	GPS.Minutes = 0;
+	GPS.Seconds = 0;
 	GPS.Longitude = 0.0;
 	GPS.Latitude = 0.0;
 	GPS.Altitude = 0;
@@ -681,6 +743,7 @@ int main(void)
 	// Switch on the GPS
 	if (Config.BoardType == 0)
 	{
+		// Only PITS board had this, not PITS+
 		pinMode (UBLOX_ENABLE, OUTPUT);
 		digitalWrite (UBLOX_ENABLE, 0);
 	}
@@ -701,8 +764,11 @@ int main(void)
 	system("sudo modprobe w1-gpio");
 	system("sudo modprobe w1-therm");
 	
-	// SPI for ADC (older boards), LoRa add-on board
-	system("gpio load spi");
+	if (!devicetree())
+	{
+		// SPI for ADC (older boards), LoRa add-on board
+		system("gpio load spi");
+	}
 
 	// SSDV Folders
 	sprintf(Config.Channels[0].SSDVFolder, "%s/RTTY", SSDVFolder);
@@ -710,7 +776,7 @@ int main(void)
 	sprintf(Config.Channels[2].SSDVFolder, "%s/LORA0", SSDVFolder);
 	sprintf(Config.Channels[3].SSDVFolder, "%s/LORA1", SSDVFolder);
 	sprintf(Config.Channels[4].SSDVFolder, "%s/FULL", SSDVFolder);
-	
+		
 	if (Config.Camera)
 	{
 		// Create SSDV Folders
@@ -734,10 +800,15 @@ int main(void)
 		for (i=0; i<5; i++)
 		{
 			sprintf(Config.Channels[i].take_pic, "take_pic_%d", i);
-			sprintf(Config.Channels[i].current_ssdv, "ssdv_%d.bin", i);
-			sprintf(Config.Channels[i].next_ssdv, "ssdv_%d.nxt", i);
+			// sprintf(Config.Channels[i].current_ssdv, "ssdv_%d.bin", i);
+			// sprintf(Config.Channels[i].next_ssdv, "ssdv_%d.nxt", i);
 			sprintf(Config.Channels[i].convert_file, "convert_%d", i);
 			sprintf(Config.Channels[i].ssdv_done, "ssdv_done_%d", i);
+			
+			Config.Channels[i].SSDVImageNumber = -1;
+			Config.Channels[i].SSDVPacketNumber = -1;
+			
+			Config.Channels[i].ImageFP = NULL;
 		}
 	}
 	
@@ -805,6 +876,15 @@ int main(void)
 		fprintf(stderr, "Error creating LED thread\n");
 		return 1;
 	}
+
+	if (Config.TelemetryFileUpdate > 0)
+	{
+		if (pthread_create(&LogThread, NULL, LogLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating Log thread\n");
+			return 1;
+		}
+	}
 	
 	if (Config.EnableBMP085)
 	{
@@ -823,37 +903,63 @@ int main(void)
 		}
 	}	
 	
-	if (Config.InfoMessageCount < 0)
+	if (!Config.DisableRTTY)
 	{
-		// Default number depends on baud rate
-		Config.InfoMessageCount = (Config.TxSpeed < B300) ? 2 : 4;
-	}
+		if (Config.InfoMessageCount < 0)
+		{
+			// Default number depends on baud rate
+			Config.InfoMessageCount = (Config.TxSpeed < B300) ? 2 : 4;
+		}
 	
-	for (i=0; i<Config.InfoMessageCount; i++)
-	{
-		SendIPAddress(fd);
-		SendFreeSpace(fd);
+		for (i=0; i<Config.InfoMessageCount; i++)
+		{
+			SendIPAddress(fd);
+			SendFreeSpace(fd);
+		}
 	}
 
+	ImagePacketCount = 0;
+	
 	while (1)
-	{	
+	{
+		static int CarrierOn=1;
+		
 		if (Config.DisableRTTY)
 		{
 			delayMilliseconds (200);
 		}
+		else if (LoRaUploadNow(&GPS, 10))
+		{
+			if (CarrierOn)
+			{
+				digitalWrite (NTX2B_ENABLE, 0);
+				CarrierOn = 0;
+				printf("Switching RTTY carrier off\n");
+			}
+			delayMilliseconds (200);
+		}
 		else
 		{
-			BuildSentence(Sentence, ++Sentence_Counter, &GPS);
-			
-			SendSentence(fd, Sentence);
-			
-			if (Config.Channels[RTTY_CHANNEL].ImagePackets > 0)
+			if (!CarrierOn)
 			{
-
-				for (i=0; i< ((GPS.Altitude > Config.SSDVHigh) ? Config.Channels[RTTY_CHANNEL].ImagePackets : 1); i++)
-				{
-					SendRTTYImage(fd);
-				}
+				digitalWrite (NTX2B_ENABLE, 1);
+				printf("Switching RTTY carrier on\n");
+				CarrierOn = 1;
+			}
+			
+			MaxImagePackets = (GPS.Altitude > Config.SSDVHigh) ? Config.Channels[RTTY_CHANNEL].ImagePackets : 1;
+			
+			if (ImagePacketCount++ < MaxImagePackets)
+			{
+				SendRTTYImage(fd);
+			}
+			else
+			{
+				ImagePacketCount = 0;
+				
+				BuildSentence(Sentence, ++Sentence_Counter, &GPS);
+			
+				SendSentence(fd, Sentence);
 			}
 		}
 	}
