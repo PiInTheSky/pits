@@ -1,2 +1,0 @@
-raspistill -st -w 480 -h 304 -t 3000 -ex auto -mm matrix  -o /home/pi/pits/tracker/images/LORA1/$1.jpg
-exiv2 -c'Alt=153;Lat=51.95029;Long=-2.54442;UTC=18:13:50;Ascent=-0.1;Mode=0' /home/pi/pits/tracker/images/LORA1/$1.jpg
