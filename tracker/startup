@@ -5,7 +5,7 @@ sudo modprobe w1_therm
 sudo modprobe i2c-dev
 sudo -b ./send_aprs
 sudo ./camera &
-python3 sensors.py &
-python3 astro_led.py &
+#python3 sensors.py &
+#python3 astro_led.py &
 sudo ./tracker
 
