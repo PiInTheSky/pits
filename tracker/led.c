@@ -18,7 +18,7 @@
 void *LEDLoop(void *some_void_ptr)
 {
 	struct TGPS *GPS;
-	int Flash;
+	int Flash=0;
 
 	GPS = (struct TGPS *)some_void_ptr;
 
