@@ -1,10 +1,9 @@
-while [ 1 ]
-do
-	sudo ./set_freq 434.45
-	sleep 1
-	sudo ./set_freq 434.50
-	sleep 1
-	sudo ./set_freq 434.55
-	sleep 1
-done
-
+sudo modprobe snd-bcm2835
+gpio mode 1 alt5
+amixer set PCM -- 400
+gpio mode 4 output
+gpio write 4 1
+sleep 0.5
+aplay aprs.wav
+sleep 0.2
+gpio write 4 0

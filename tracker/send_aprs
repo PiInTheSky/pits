@@ -1,7 +1,12 @@
 #!/bin/bash
 cd /home/pi/pits/tracker
+
+echo Enable audio
+sudo modprobe snd-bcm2835
+
 echo Redirect audio to GPIO ...
-sudo ./pwm_switch
+gpio mode 1 alt5
+
 echo Set APRS volume ...
 amixer set PCM -- 400
 
