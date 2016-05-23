@@ -115,7 +115,7 @@ void FindBestImageAndRequestConversion(int Channel)
 		if ((fp = fopen(Config.Channels[Channel].convert_file, "wt")) != NULL)
 		{
 			Config.Channels[Channel].SSDVFileNumber++;
-			Config.Channels[Channel].SSDVFileNumber = Config.Channels[Channel].SSDVFileNumber & 255;
+			// Config.Channels[Channel].SSDVFileNumber = Config.Channels[Channel].SSDVFileNumber & 255;
 
 			sprintf(Config.Channels[Channel].ssdv_filename, "ssdv_%d_%d.bin", Channel, Config.Channels[Channel].SSDVFileNumber);
 			
@@ -151,6 +151,7 @@ void *CameraLoop(void *some_void_ptr)
 	for (Channel=0; Channel<5; Channel++)
 	{
 		Config.Channels[Channel].TimeSinceLastImage = Config.Channels[Channel].ImagePeriod;
+		Config.Channels[Channel].SSDVFileNumber = 0;
 	}
 
 	while (1)
@@ -246,8 +247,9 @@ void *CameraLoop(void *some_void_ptr)
 							{
 								Mode = 0;
 							}
-							fprintf(fp, "exiv2 -c'Alt=%ld;Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
+							fprintf(fp, "exiv2 -c'Alt=%ld;MaxAlt=%ld;Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
 												GPS->Altitude,
+												GPS->MaximumAltitude,
 												GPS->Latitude,
 												GPS->Longitude,
 												GPS->Hours, GPS->Minutes, GPS->Seconds,

@@ -46,6 +46,7 @@ struct TLoRaDevice
 
 	// Uplink Messaging
 	int EnableMessageStatus;
+	int EnableRSSIStatus;
 	int LastMessageNumber;
 	int MessageCount;
 	int LastPacketRSSI;

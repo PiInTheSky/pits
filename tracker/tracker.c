@@ -75,9 +75,16 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	ExtraFields2[0] = '\0';
 	ExtraFields3[0] = '\0';
 	
-	if (Config.BoardType)
+	if (Config.BoardType == 3)
 	{
-		sprintf(ExtraFields1, ",%.0f", GPS->BoardCurrent * 1000);
+	}
+	else if (Config.BoardType == 0)
+	{
+		sprintf(ExtraFields1, "%.3f", GPS->BatteryVoltage);
+	}
+	else
+	{
+		sprintf(ExtraFields1, "%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
 	}
 	
 	if (Config.EnableBMP085)
@@ -90,7 +97,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
 	}
 	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f,%3.1f%s%s%s",
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f%s%s%s",
             Config.Channels[RTTY_CHANNEL].PayloadID,
             SentenceCounter,
 			TimeBuffer,
@@ -101,7 +108,6 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 			GPS->Direction,
 			GPS->Satellites,            
             GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
-            GPS->BatteryVoltage,
 			ExtraFields1,
 			ExtraFields2,
 			ExtraFields3);
@@ -658,18 +664,21 @@ int main(void)
 		if (Config.BoardType == 3)
 		{
 			printf("RPi Zero\n");
-		}
-		else if (Config.BoardType == 2)
-		{
-			printf("RPi 2 B\n");
+			printf("PITS Zero Board\n");
 		}
 		else
 		{
-			printf("RPi Model A+ or B+\n");
+			if (Config.BoardType == 2)
+			{
+				printf("RPi 2 B\n");
+			}
+			else
+			{
+				printf("RPi Model A+ or B+\n");
+			}
+			printf("PITS+ Board\n");
 		}
-		
-		printf("PITS+ Board\n");
-		
+				
 		Config.LED_OK = 25;
 		Config.LED_Warn = 24;
 		
@@ -841,24 +850,28 @@ int main(void)
 		return 1;
 	}
 
-	if (I2CADCExists())
+	if (Config.BoardType != 3)
 	{
-		printf ("V2.4 or later board with I2C ADC\n");
-		
-		if (pthread_create(&ADCThread, NULL, I2CADCLoop, &GPS))
+		// Not a zero, so should have ADC on it
+		if (I2CADCExists())
 		{
-			fprintf(stderr, "Error creating ADC thread\n");
-			return 1;
+			printf ("V2.4 or later board with I2C ADC\n");
+			
+			if (pthread_create(&ADCThread, NULL, I2CADCLoop, &GPS))
+			{
+				fprintf(stderr, "Error creating ADC thread\n");
+				return 1;
+			}
 		}
-	}
-	else
-	{
-		printf ("Older board with SPI ADC\n");
-		
-		if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+		else
 		{
-			fprintf(stderr, "Error creating ADC thread\n");
-			return 1;
+			printf ("Older board with SPI ADC\n");
+			
+			if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+			{
+				fprintf(stderr, "Error creating ADC thread\n");
+				return 1;
+			}
 		}
 	}
 

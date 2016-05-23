@@ -327,6 +327,24 @@ int GPSChecksumOK(unsigned char *Buffer, int Count)
   return (Buffer[Count-4] == '*') && (Buffer[Count-3] == Hex(XOR >> 4)) && (Buffer[Count-2] == Hex(XOR & 15));
 }
 
+void FixUBXChecksum(unsigned char *Message, int Length)
+{ 
+  int i;
+  unsigned char CK_A, CK_B;
+  
+  CK_A = 0;
+  CK_B = 0;
+
+  for (i=2; i<(Length-2); i++)
+  {
+    CK_A = CK_A + Message[i];
+    CK_B = CK_B + CK_A;
+  }
+  
+  Message[Length-2] = CK_A;
+  Message[Length-1] = CK_B;
+}
+
 
 void SendUBX(struct i2c_info *bb, unsigned char *MSG, int len)
 {
@@ -339,6 +357,52 @@ void SetFlightMode(struct i2c_info *bb)
     unsigned char setNav[] = {0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00, 0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0xDC};
     SendUBX(bb, setNav, sizeof(setNav));
 	printf ("Setting flight mode\n");
+}
+
+void SetPowerMode(struct i2c_info *bb, int SavePower)
+{
+	unsigned char setPSM[] = {0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92 };
+  
+	setPSM[7] = SavePower ? 1 : 0;
+	
+	printf ("Setting power-saving %s\n", SavePower ? "ON" : "OFF");
+  
+	FixUBXChecksum(setPSM, sizeof(setPSM));
+  
+	SendUBX(bb, setPSM, sizeof(setPSM));
+}
+
+void setGPS_GNSS(struct i2c_info *bb)
+{
+  // Sets CFG-GNSS to disable everything other than GPS GNSS
+  // solution. Failure to do this means GPS power saving 
+  // doesn't work. Not needed for MAX7, needed for MAX8's
+	unsigned char setgnss[] = {
+    0xB5, 0x62, 0x06, 0x3E, 0x2C, 0x00, 0x00, 0x00,
+    0x20, 0x05, 0x00, 0x08, 0x10, 0x00, 0x01, 0x00,
+    0x01, 0x01, 0x01, 0x01, 0x03, 0x00, 0x00, 0x00,
+    0x01, 0x01, 0x03, 0x08, 0x10, 0x00, 0x00, 0x00,
+    0x01, 0x01, 0x05, 0x00, 0x03, 0x00, 0x00, 0x00,
+    0x01, 0x01, 0x06, 0x08, 0x0E, 0x00, 0x00, 0x00,
+    0x01, 0x01, 0xFC, 0x11   };
+
+	printf ("Disabling GNSS\n");
+
+    SendUBX(bb, setgnss, sizeof(setgnss));
+}
+
+void setGPS_DynamicModel6(struct i2c_info *bb)
+{
+  uint8_t setdm6[] = {
+    0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06,
+    0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00,
+    0x05, 0x00, 0xFA, 0x00, 0xFA, 0x00, 0x64, 0x00, 0x2C,
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0xDC           };
+
+	printf ("Setting dynamic model 6\n");
+
+    SendUBX(bb, setdm6, sizeof(setdm6));
 }
 
 float FixPosition(float Position)
@@ -393,6 +457,7 @@ void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 					}
 					// printf("Altitude=%ld, AscentRate = %.1lf\n", GPS->Altitude, GPS->AscentRate);
 					GPS->Altitude = altitude;
+					if (GPS->Altitude > GPS->MaximumAltitude) GPS->MaximumAltitude = GPS->Altitude;
 				}
 				GPS->Satellites = satellites;
 			}
@@ -493,11 +558,13 @@ void *GPSLoop(void *some_void_ptr)
 	int id, Length;
 	struct i2c_info bb;
 	struct TGPS *GPS;
-
+	int SentenceCount;
+	
 	GPS = (struct TGPS *)some_void_ptr;
 	
 	Length = 0;
-
+	SentenceCount = 0;
+	
     while (1)
     {
         int i;
@@ -510,9 +577,7 @@ void *GPSLoop(void *some_void_ptr)
 			printf("Failed to open I2C\n");
 			exit(1);
 		}
-	
-		SetFlightMode(&bb);
-
+			
         while (!bb.Failed)
         {
             Character = I2CGetc(&bb);
@@ -538,6 +603,26 @@ void *GPSLoop(void *some_void_ptr)
                		Line[Length] = '\0';
 					// puts(Line);
                		ProcessLine(&bb, GPS, Line, Length);
+					
+					if (++SentenceCount > 100) SentenceCount = 0;
+					
+					if ((SentenceCount == 10) && Config.Power_Saving)
+					{
+						setGPS_GNSS(&bb);
+					}					
+					else if ((SentenceCount == 20) && Config.Power_Saving)
+					{
+						setGPS_DynamicModel6(&bb);
+					}
+					else if (SentenceCount == 30)
+					{
+						SetPowerMode(&bb, Config.Power_Saving && (GPS->Satellites > 4));
+					}
+					else if (SentenceCount == 40)
+					{
+						SetFlightMode(&bb);
+					}
+
 					delayMilliseconds (100);
                		Length = 0;
                	}

@@ -262,7 +262,7 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
     int Count, i, j;
     unsigned char c;
     unsigned int CRC, xPolynomial;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32], ExtraFields5[32];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32], ExtraFields5[32], ExtraFields6[32];
 	
 	if (FirstTime)
 	{
@@ -279,10 +279,18 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 	ExtraFields3[0] = '\0';
 	ExtraFields4[0] = '\0';
 	ExtraFields5[0] = '\0';
+	ExtraFields6[0] = '\0';
 	
-	if (Config.BoardType)
+	if (Config.BoardType == 3)
 	{
-		sprintf(ExtraFields1, ",%.0f", GPS->BoardCurrent * 1000);
+	}
+	else if (Config.BoardType == 0)
+	{
+		sprintf(ExtraFields1, "%.3f", GPS->BatteryVoltage);
+	}
+	else
+	{
+		sprintf(ExtraFields1, "%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
 	}
 	
 	if (Config.EnableBMP085)
@@ -300,12 +308,16 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 		sprintf(ExtraFields4, ",%7.5lf,%7.5lf", GPS->PredictedLatitude, GPS->PredictedLongitude);
 	}
 	
+	if (Config.LoRaDevices[Channel].EnableRSSIStatus)
+	{	
+		sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[Channel].LastPacketRSSI,
+										   Config.LoRaDevices[Channel].LastPacketSNR,
+										   Config.LoRaDevices[Channel].PacketCount);
+	}
+
 	if (Config.LoRaDevices[Channel].EnableMessageStatus)
 	{	
-		sprintf(ExtraFields5, ",%d,%d", Config.LoRaDevices[Channel].LastMessageNumber, Config.LoRaDevices[Channel].MessageCount);
-		// sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[Channel].LastPacketRSSI,
-										   // Config.LoRaDevices[Channel].LastPacketSNR,
-										   // Config.LoRaDevices[Channel].PacketCount);
+		sprintf(ExtraFields6, ",%d,%d", Config.LoRaDevices[Channel].LastMessageNumber, Config.LoRaDevices[Channel].MessageCount);
 	}
 
 	// Read latest data from external file
@@ -372,7 +384,7 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 
 	// $$ASTROPI,4,16:49:36,51.95023,-2.54444,00151,0,0,13,29.8,0.0,0,0.0,25.7,995.0,40.3,4.0,121.0,5.0,0.0,-0.0,1.0
 	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f,%3.1f%s%s%s%s%s%s",
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
             Config.Channels[LORA_CHANNEL+Channel].PayloadID,
             Config.Channels[LORA_CHANNEL+Channel].SentenceCounter,
 			TimeBuffer,
@@ -383,13 +395,13 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 			GPS->Direction,
 			GPS->Satellites,
             GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
-            GPS->BatteryVoltage,
 			ExtraFields1,
 			ExtraFields2,
 			ExtraFields3,
 			ExtraFields4,
 			ExternalFields,
-			ExtraFields5);
+			ExtraFields5,
+			ExtraFields6);
 			
 	AppendCRC(TxLine);
 
@@ -567,6 +579,24 @@ void startReceiving(int Channel)
 	}
 }
 
+double FrequencyError(int Channel)
+{
+	int32_t Temp;
+	
+	Temp = (int32_t)readRegister(Channel, REG_FREQ_ERROR) & 7;
+	Temp <<= 8L;
+	Temp += (int32_t)readRegister(Channel, REG_FREQ_ERROR+1);
+	Temp <<= 8L;
+	Temp += (int32_t)readRegister(Channel, REG_FREQ_ERROR+2);
+	
+	if (readRegister(Channel, REG_FREQ_ERROR) & 8)
+	{
+		Temp = Temp - 524288;
+	}
+
+	return - ((double)Temp * (1<<24) / 32000000.0) * (125000 / 500000.0);
+}	
+
 int receiveMessage(int Channel, unsigned char *message)
 {
 	int i, Bytes, currentAddr, x;
@@ -597,7 +627,7 @@ int receiveMessage(int Channel, unsigned char *message)
 
 		// ChannelPrintf(Channel,  9, 1, "Packet   SNR = %4d   ", (char)(readRegister(Channel, REG_PACKET_SNR)) / 4);
 		// ChannelPrintf(Channel, 10, 1, "Packet  RSSI = %4d   ", readRegister(Channel, REG_PACKET_RSSI) - 157);
-		// ChannelPrintf(Channel, 11, 1, "Freq. Error = %4.1lfkHz ", FrequencyError(Channel) / 1000);
+		printf("LORA%d: Freq. Error = %4.1lfkHz ", Channel, FrequencyError(Channel) / 1000);
 
 		writeRegister(Channel, REG_FIFO_ADDR_PTR, currentAddr);   
 		
@@ -793,7 +823,7 @@ int CheckForFreeChannel(struct TGPS *GPS)
 						if (Config.LoRaDevices[Channel].SpeedMode == 3)
 						{
 							// We're using a different frequency and mode for the uplink
-							setFrequency(Channel, 869.475);
+							setFrequency(Channel, 869.490);
 							SetLoRaParameters(Channel, EXPLICIT_MODE, ERROR_CODING_4_8, BANDWIDTH_125K, SPREADING_8, 0);
 							Config.LoRaDevices[Channel].ReturnStateAfterCall = 1;
 							printf("Set Uplink Mode\n");
@@ -906,6 +936,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 			Config->LoRaDevices[Channel].UplinkPeriod = ReadInteger(fp, "LORA_Uplink_Period", Channel, 0, 0);			
 			Config->LoRaDevices[Channel].UplinkCycle = ReadInteger(fp, "LORA_Uplink_Cycle", Channel, 0, 0);			
 			ReadBoolean(fp, "LORA_Message_Status", Channel, 0, &(Config->LoRaDevices[Channel].EnableMessageStatus));
+			ReadBoolean(fp, "LORA_RSSI_Status", Channel, 0, &(Config->LoRaDevices[Channel].EnableRSSIStatus));
 			if ((Config->LoRaDevices[Channel].UplinkPeriod > 0) && (Config->LoRaDevices[Channel].UplinkCycle > 0))
 			{
 				printf("LORA%d uplink period %ds every %ds\n", Channel, Config->LoRaDevices[Channel].UplinkPeriod, Config->LoRaDevices[Channel].UplinkCycle);

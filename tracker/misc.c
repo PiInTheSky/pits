@@ -73,7 +73,9 @@ int GetBoardType(void)
 							// B+ or A+
 							boardRev = 1;
 						}
-						else if (strstr(line, "900092") != NULL)
+						else if ((strstr(line, "900092") != NULL) ||
+						         (strstr(line, "920092") != NULL) ||
+						         (strstr(line, "920093") != NULL))
 						{
 							// Zero
 							boardRev = 3;
