@@ -15,12 +15,13 @@ logging=GPS,Telemetry
 Disable_RTTY=N
 info_messages=2
 Power_Saving=N
-camera_settings=-vf
+camera_settings=-vf -hf
+quiet_rtty_for_uplink=Y
 
-full_low_width=1296
-full_low_height=972
-full_high_width=2592
-full_high_height=1944
+full_low_width=1640
+full_low_height=1232
+full_high_width=3280
+full_high_height=2464
 full_image_period=60
 
 landing_prediction=N
@@ -28,26 +29,21 @@ cd_area=0.66
 payload_weight=1.0
 prediction_id=XX
 
-#APRS_Callsign=CHANGE
-APRS_ID=11
-APRS_Period=1
-APRS_Random=5
-
 LORA_Frequency_1=869.850
 LORA_Payload_1=PI868
 LORA_Mode_1=3
-#LORA_Implicit_1=Y
-#LORA_Coding_1=5
-#LORA_SF_1=6
+LORA_Implicit_1=Y
+LORA_Coding_1=5
+LORA_SF_1=6
 
 LORA_Uplink_Period_1=5
 LORA_Uplink_Cycle_1=60
 LORA_RSSI_Status_1=Y
 LORA_Message_Status_1=N
-LORA_low_width_1=1296
-LORA_low_height_1=972
-LORA_high_width_1=1296
-LORA_high_height_1=972
+LORA_low_width_1=1632
+LORA_low_height_1=1232
+LORA_high_width_1=1632
+LORA_high_height_1=1232
 LORA_image_packets_1=32
-LORA_image_period_1=30
+LORA_image_period_1=25
 

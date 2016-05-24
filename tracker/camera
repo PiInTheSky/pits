@@ -9,7 +9,6 @@ do
 	do
 		if [ -e take_pic_$i ]
 		then
-			sleep 1
 			current_date=$(date "+%d_%m_%y")
 			current_time=$(date "+%H_%M_%S")
 			echo Running script take_pic_$i ...
@@ -19,7 +18,6 @@ do
 		
 		if [ -e convert_$i ]
 		then
-			sleep 1
 			current_date=$(date "+%d_%m_%y")
 			echo Running script convert_$i ...
 			sudo ./convert_$i $current_date

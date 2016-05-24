@@ -269,7 +269,7 @@ void *CameraLoop(void *some_void_ptr)
 				if (Channel < 4)
 				{
 					// Exclude full-size images - no conversion for those
-					if (TimeTillImageCompleted(Channel) < 10)
+					if (TimeTillImageCompleted(Channel) < 25)
 					{
 						// Need converted file soon
 						if (!FileExists(Config.Channels[Channel].convert_file) && !FileExists(Config.Channels[Channel].ssdv_done))

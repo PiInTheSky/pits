@@ -4,6 +4,9 @@ desktop.ini
 tracker/tracker
 tracker/download
 tracker/keep
+tracker/ssdv_done_*
+tracker/coonvert_*
+tracker/tweets.log
 *.jpg
 telemetry.txt
 gps.txt
