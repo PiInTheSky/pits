@@ -286,11 +286,11 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 	}
 	else if (Config.BoardType == 0)
 	{
-		sprintf(ExtraFields1, "%.3f", GPS->BatteryVoltage);
+		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
 	}
 	else
 	{
-		sprintf(ExtraFields1, "%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
+		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
 	}
 	
 	if (Config.EnableBMP085)
