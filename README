@@ -54,6 +54,14 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 CHANGE LOG
 ==========
 
+17/06/2016
+==========
+
+- BME280 driver
+
+18/05/2015
+==========
+
 - Ability to receive SMS-style messages uplinked from the ground via LoRa.  Messages are saved to a text file and can then be processed externally (e.g. by supplied Python script to display on a Pi Sense HAT)
 - Ability to include, in the LoRa telemetry, CSV data from an external file.  Sample Python script supplied to build that file from Sense HAT sensor data.
 - Ability to re-send SSDV packets, via LoRa, that were not received on the ground.  Uses a LoRa uplink message to define which packets need to be sent.

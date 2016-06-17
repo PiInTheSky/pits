@@ -133,6 +133,7 @@ struct TConfig
 	
 	// Extra devices
 	int EnableBMP085;
+	int EnableBME280;
 	int ExternalDS18B20;
 	
 	// Logging

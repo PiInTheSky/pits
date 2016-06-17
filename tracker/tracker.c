@@ -45,6 +45,7 @@
 #include "snapper.h"
 #include "led.h"
 #include "bmp085.h"
+#include "bme280.h"
 #include "aprs.h"
 #include "lora.h"
 #include "prediction.h"
@@ -90,6 +91,11 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	if (Config.EnableBMP085)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
+	}
+	
+	if (Config.EnableBME280)
+	{
+		sprintf(ExtraFields2, ",%.1f,%.0f,%0.1f", GPS->BMP180Temperature, GPS->Pressure, GPS->Humidity);
 	}
 	
 	if (GPS->DS18B20Count > 1)
@@ -198,7 +204,17 @@ void LoadConfigFile(struct TConfig *Config)
 		printf("BMP085 Enabled\n");
 	}
 	
+	ReadBoolean(fp, "enable_bme280", -1, 0, &(Config->EnableBME280));
+	if (Config->EnableBME280)
+	{
+		printf("BME280 Enabled\n");
+	}
+	
 	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", -1, 0, 1);
+	if (Config->ExternalDS18B20)
+	{
+		printf("External DS18B20 Enabled\n");
+	}
 
 	Config->Camera = ReadCameraType(fp, "camera");
 	printf ("Camera (%s) %s\n", CameraTypes[Config->Camera], Config->Camera ? "Enabled" : "Disabled");
@@ -638,7 +654,7 @@ int main(void)
 	char Sentence[100], Command[100];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, LEDThread, LogThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread;
 	
 	if (prog_count("tracker") > 1)
 	{
@@ -904,6 +920,15 @@ int main(void)
 		if (pthread_create(&BMP085Thread, NULL, BMP085Loop, &GPS))
 		{
 			fprintf(stderr, "Error creating BMP085 thread\n");
+			return 1;
+		}
+	}
+
+	if (Config.EnableBME280)
+	{
+		if (pthread_create(&BME280Thread, NULL, BME280Loop, &GPS))
+		{
+			fprintf(stderr, "Error creating BME280 thread\n");
 			return 1;
 		}
 	}
