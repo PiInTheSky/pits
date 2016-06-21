@@ -125,7 +125,7 @@ void StartNewFileIfNeeded(int Channel)
     if (Config.Channels[Channel].ImageFP)
 	{
 		// At end of file ?
-		if (Config.Channels[Channel].SSDVPacketNumber >= (Config.Channels[Channel].SSDVNumberOfPackets-1))
+		if (Config.Channels[Channel].SSDVPacketNumber >= (Config.Channels[Channel].SSDVNumberOfPackets))
 		{
 			fclose(Config.Channels[Channel].ImageFP);
 			Config.Channels[Channel].ImageFP = NULL;
