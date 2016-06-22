@@ -540,19 +540,12 @@ int SendRTTYImage(int fd)
         Count = fread(Buffer, 1, 256, Config.Channels[RTTY_CHANNEL].ImageFP);
         if (Count > 0)
         {
-            printf("RTTY: SSDV record %d of %d\r\n", Config.Channels[RTTY_CHANNEL].SSDVPacketNumber++, Config.Channels[RTTY_CHANNEL].SSDVNumberOfPackets);
-
-			// Config.Channels[RTTY_CHANNEL].ImagePacketCount++;
-
-			// if ((fd = OpenSerialPort()) >= 0)
-			// {
+            // printf("RTTY: SSDV record %d of %d\r\n", Config.Channels[RTTY_CHANNEL].SSDVPacketNumber++, Config.Channels[RTTY_CHANNEL].SSDVNumberOfPackets);
+            printf("RTTY: SSDV record %d of %d\r\n", Config.Channels[RTTY_CHANNEL].SSDVPacketNumber, Config.Channels[RTTY_CHANNEL].SSDVNumberOfPackets);
 
 			write(fd, Buffer, Count);
 
 			tcsetattr(fd, TCSAFLUSH, &options);
-
-			// close(fd);
-			// }
 
             SentSomething = 1;
         }
