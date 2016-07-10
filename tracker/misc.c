@@ -65,7 +65,22 @@ int GetBoardType(void)
 					if (boardRev < 0)
 					{
 						printf ("RPi %s", line);
-						if ((strstr(line, "0015") != NULL) ||
+						if ((strstr(line, "0002") != NULL) ||
+							(strstr(line, "0003") != NULL) ||
+							(strstr(line, "0004") != NULL) ||
+							(strstr(line, "0005") != NULL) ||
+							(strstr(line, "0006") != NULL) ||
+							(strstr(line, "0007") != NULL) ||
+							(strstr(line, "0008") != NULL) ||
+							(strstr(line, "0009") != NULL) ||
+							(strstr(line, "000d") != NULL) ||
+							(strstr(line, "000e") != NULL) ||
+							(strstr(line, "000f") != NULL))
+						{
+							// A or B
+							boardRev = 0;
+						}
+						else if ((strstr(line, "0015") != NULL) ||
 							(strstr(line, "0010") != NULL) ||
 							(strstr(line, "0012") != NULL) ||
 							(strstr(line, "0013") != NULL))
@@ -79,6 +94,11 @@ int GetBoardType(void)
 						{
 							// Zero
 							boardRev = 3;
+						}
+						else
+						{
+							// Default something new but not zero
+							boardRev = 1;
 						}
 					}
 				}
