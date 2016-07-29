@@ -78,13 +78,18 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	
 	if (Config.BoardType == 3)
 	{
+			// Pi Zero.  No ADC on the PITS Zero
 	}
 	else if (Config.BoardType == 0)
 	{
+		// Pi A or B.  Only Battery Voltage on the PITS
+		
 		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
 	}
 	else
 	{
+		// Pi A+ or B+ (V1 or V2 or V3).  Full ADC for voltage and current
+
 		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
 	}
 	
@@ -365,6 +370,13 @@ void SetMTX2Frequency(char *FrequencyString)
 	gpioTerminate();
 }
 
+char *SerialPortName(void)
+{
+	// Put this here in case the serial port name changes sometime
+	
+	return "/dev/ttyAMA0";
+}
+
 void SetNTX2BFrequency(char *FrequencyString)
 {
 	int fd, Frequency;
@@ -377,7 +389,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 	pinMode (NTX2B_ENABLE, OUTPUT);
 	delayMilliseconds (200);
 	
-	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
+	fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);
 	if (fd >= 0)
 	{
 		tcgetattr(fd, &options);
@@ -403,7 +415,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 		close(fd);
 		delayMilliseconds (1000);
 		
-		fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);
+		fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);
 		
 		if (strlen(FrequencyString) < 3)
 		{
@@ -457,7 +469,7 @@ int OpenSerialPort(void)
 {
 	int fd;
 
-	fd = open("/dev/ttyAMA0", O_WRONLY | O_NOCTTY);	// O_NDELAY);
+	fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);	// O_NDELAY);
 	if (fd >= 0)
 	{
 		/* get the current options */
@@ -679,11 +691,11 @@ int main(void)
 		{
 			if (Config.BoardType == 2)
 			{
-				printf("RPi 2 B\n");
+				printf("RPi 3 B\n");
 			}
 			else
 			{
-				printf("RPi Model A+ or B+\n");
+				printf("RPi Model A+ or B+ or B V2\n");
 			}
 			printf("PITS+ Board\n");
 		}

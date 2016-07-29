@@ -1,0 +1,2 @@
+raspistill -st -w 320 -h 240 -t 3000 -ex auto -mm matrix  -o /home/pi/pits/tracker/images/RTTY/$1.jpg
+exiv2 -c'Alt=0;MaxAlt=0;Lat=0.00000;Long=0.00000;UTC=00:00:00;Ascent=2559240484936159486749405674995712.0;Mode=1' /home/pi/pits/tracker/images/RTTY/$1.jpg
