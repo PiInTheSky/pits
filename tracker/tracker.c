@@ -76,9 +76,9 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	ExtraFields2[0] = '\0';
 	ExtraFields3[0] = '\0';
 	
-	if (Config.BoardType == 3)
+	if ((Config.BoardType == 3) || (Config.DisableADC))
 	{
-			// Pi Zero.  No ADC on the PITS Zero
+			// Pi Zero - no ADC on the PITS Zero, or manually disabled ADC
 	}
 	else if (Config.BoardType == 0)
 	{
@@ -164,6 +164,7 @@ void LoadConfigFile(struct TConfig *Config)
 		printf("HDMI/Composite outputs will be disabled\n");
 	}
 	
+	ReadBoolean(fp, "Disable_ADC", -1, 0, &(Config->DisableADC));
 	ReadBoolean(fp, "Disable_RTTY", -1, 0, &(Config->DisableRTTY));
 	Config->Channels[RTTY_CHANNEL].Enabled = !Config->DisableRTTY;
 	if (Config->DisableRTTY)
@@ -871,7 +872,7 @@ int main(void)
 		return 1;
 	}
 
-	if (Config.BoardType != 3)
+	if ((Config.BoardType != 3) && (!Config.DisableADC))
 	{
 		// Not a zero, so should have ADC on it
 		if (I2CADCExists())

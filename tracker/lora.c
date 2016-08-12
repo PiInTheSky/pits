@@ -281,7 +281,7 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 	ExtraFields5[0] = '\0';
 	ExtraFields6[0] = '\0';
 	
-	if (Config.BoardType == 3)
+	if ((Config.BoardType == 3) || (Config.DisableADC))
 	{
 	}
 	else if (Config.BoardType == 0)
@@ -361,29 +361,6 @@ int BuildLoRaSentence(char *TxLine, int Channel, struct TGPS *GPS)
 		}
 	}
 
-	
-    // sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5u,%d,%d,%d,%3.1f,%3.1f,%d,%d,%s%s%s%s%s",
-            // Config.Channels[LORA_CHANNEL+Channel].PayloadID,
-            // Config.Channels[LORA_CHANNEL+Channel].SentenceCounter,
-			// TimeBuffer2,
-            // GPS->Latitude,
-            // GPS->Longitude,
-            // GPS->Altitude,
-			// (GPS->Speed * 13) / 7,
-			// GPS->Direction,
-			// GPS->Satellites,
-            // GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
-            // GPS->BatteryVoltage,
-			// Config.LoRaDevices[Channel].GroundCount,
-			// Config.LoRaDevices[Channel].AirCount,
-			// Config.LoRaDevices[Channel].LastCommand,
-			// ExtraFields1,
-			// ExtraFields2,
-			// ExtraFields3,
-			// ExtraFields4);			
-
-	// $$ASTROPI,4,16:49:36,51.95023,-2.54444,00151,0,0,13,29.8,0.0,0,0.0,25.7,995.0,40.3,4.0,121.0,5.0,0.0,-0.0,1.0
-	
     sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
             Config.Channels[LORA_CHANNEL+Channel].PayloadID,
             Config.Channels[LORA_CHANNEL+Channel].SentenceCounter,
@@ -497,7 +474,7 @@ int TDMTimeToSendOnThisChannel(int Channel, struct TGPS *GPS)
 			long CycleSeconds;
 		
 			CycleSeconds = GPS->SecondsInDay % Config.LoRaDevices[Channel].CycleTime;
-	
+
 			if (CycleSeconds == Config.LoRaDevices[Channel].Slot)
 			{
 				Config.LoRaDevices[Channel].LastTxAt = GPS->SecondsInDay;
@@ -796,12 +773,6 @@ int CheckForFreeChannel(struct TGPS *GPS)
 					writeRegister(Channel, REG_IRQ_FLAGS, 0x08); 
 					Config.LoRaDevices[Channel].LoRaMode = lmIdle;
 				}
-				// else if ((Channel == 1) && (Config.LoRaDevices[Channel].CycleTime == 0))
-				// {
-					// // Get here first time that channel 1 is in use
-					// // Add a short delay to put the 2 channels out of sync, to make things easier at the rx end
-					// delay(2000);
-				// }
 				
 				// Mow we test to see if we can send now
 				// If Tx is continuous, then the answer is yes, of course
@@ -1187,8 +1158,7 @@ void *LoRaLoop(void *some_void_ptr)
 			{			
 				int PacketLength, MaxImagePackets;
 
-				// if ((Config.Channels[LORA_CHANNEL+LoRaChannel].ImageFP == NULL) || (Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount >= MaxImagePackets))
-				if (Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode == 0)	// ImagePacketCount >= MaxImagePackets)
+				if (Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode == 0)
 				{
 					int PacketLength;
 
@@ -1207,7 +1177,6 @@ void *LoRaLoop(void *some_void_ptr)
 									
 					SendLoRaData(LoRaChannel, Sentence, PacketLength);		
 
-					// Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePacketCount = 0;
 					Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall++;
 				}
 				else
@@ -1217,7 +1186,14 @@ void *LoRaLoop(void *some_void_ptr)
 					SendLoRaImage(LoRaChannel);
 				}
 
-				MaxImagePackets = ((GPS->Altitude > Config.SSDVHigh) || (Config.Channels[LORA_CHANNEL+LoRaChannel].BaudRate > 2000)) ? Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePackets : 1;
+				if (Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePackets == 0)
+				{
+					MaxImagePackets = 0;
+				}
+				else
+				{
+					MaxImagePackets = ((GPS->Altitude > Config.SSDVHigh) || (Config.Channels[LORA_CHANNEL+LoRaChannel].BaudRate > 2000)) ? Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePackets : 1;
+				}
 
 				if (++Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode > MaxImagePackets)
 				{

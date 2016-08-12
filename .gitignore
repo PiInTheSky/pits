@@ -10,6 +10,6 @@ tracker/tweets.log
 *.jpg
 telemetry.txt
 gps.txt
-take*.txt
-convert*.txt
+take*
+convert*
 *.bin

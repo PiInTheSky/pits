@@ -1,5 +1,7 @@
 // Globals
 
+#define	MAX_SSDV_PACKETS	4096
+
 #include <termios.h>
 
 typedef enum {lmIdle, lmListening, lmSending} tLoRaMode;
@@ -58,7 +60,7 @@ struct TSSDVPackets
 {
 	int ImageNumber;
 	int NumberOfPackets;
-	unsigned char Packets[1024];
+	unsigned char Packets[MAX_SSDV_PACKETS];
 };
 
 struct TRecentPacket
@@ -125,6 +127,7 @@ struct TConfig
 	int DisableMonitor;
 	int InfoMessageCount;
 	int BoardType;
+	int DisableADC;
 	
 	// Camera
 	int Camera;	

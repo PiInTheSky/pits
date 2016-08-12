@@ -162,7 +162,6 @@ void *CameraLoop(void *some_void_ptr)
 			{
 				// Channel using SSDV
 				
-				// if ((++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod) || (TimeTillImageCompleted(Channel) < 15))
 				if (++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod)
 				{
 					// Time to take a photo on this channel
