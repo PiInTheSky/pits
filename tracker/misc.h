@@ -152,6 +152,7 @@ struct TConfig
 	// GPS Settings
 	int SDA;
 	int SCL;
+	char GPSDevice[64];
 	
 	// RTTY Settings
 	int DisableRTTY;

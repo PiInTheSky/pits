@@ -1,4 +1,4 @@
-/* ========================================================================== */
+// /* ========================================================================== */
 /*   gps.c                                                                    */
 /*                                                                            */
 /*   i2c bit-banging code for ublox on Pi A/A+/B/B+                           */
@@ -30,13 +30,16 @@
 #include "misc.h"
 #include "gps.h"
 
-struct i2c_info {
+
+struct gps_info {
     uint8_t address; // 7 bit address
     uint8_t sda; // pin used for sda coresponds to gpio
     uint8_t scl; // clock
-    uint32_t clock_delay; // proporional to bus speed
-    uint32_t timeout; //
+    uint32_t clock_delay; // proportional to bus speed
+    uint32_t timeout;
 	int Failed;
+	int fd;			// For serial port GPS
+	enum {cmNone, cmI2C, cmSerial} ConnectionMode;
 };
 
 void delayMilliseconds (unsigned int millis)
@@ -54,48 +57,98 @@ void delayMilliseconds (unsigned int millis)
 // The scl and sda line are set to be always 0 (low) output, when a high is
 // required they are set to be an input.
 // *****************************************************************************
-int OpenI2C(struct i2c_info *bb,
-			uint8_t adr, // 7 bit address
-			uint8_t data,   // GPIO pin for data 
-			uint8_t clock,  // GPIO pin for clock
-			uint32_t delay, // clock delay us
-			uint32_t timeout) // clock stretch & timeout
+int OpenGPSPort(struct gps_info *bb,
+				char *SerialDevice,
+				uint8_t adr, // 7 bit address
+				uint8_t data,   // GPIO pin for data 
+				uint8_t clock,  // GPIO pin for clock
+				uint32_t delay, // clock delay us
+				uint32_t timeout) // clock stretch & timeout
 {
-    bb->address = adr;
-    bb->sda = data;
-    bb->scl = clock;
-    bb->clock_delay = delay;
-    bb->timeout = timeout;
-	bb->Failed = 0;
-
+	bb->fd = -1;
+	bb->ConnectionMode = cmNone;
 	
-    // also they should be set low, input - output determines level
-	pinMode(bb->sda, INPUT);
-	pinMode(bb->scl, INPUT);
+	if (*SerialDevice)
+	{
+		bb->fd = open(SerialDevice, O_RDWR | O_NOCTTY | O_NDELAY);
+		
+		if (bb->fd >= 0)
+		{
+			struct termios options;
+			
+			fcntl(bb->fd, F_SETFL, 0);
 
-	digitalWrite(bb->sda, LOW);
-	digitalWrite(bb->scl, LOW);
+			tcgetattr(bb->fd, &options);
 
-	pullUpDnControl(bb->sda, PUD_UP);
-	pullUpDnControl(bb->scl, PUD_UP);
+			options.c_lflag &= ~ECHO;
+			options.c_cc[VMIN]  = 0;
+			options.c_cc[VTIME] = 10;
+
+			options.c_cflag &= ~CSTOPB;
+			cfsetispeed(&options, B9600);
+			cfsetospeed(&options, B9600);
+			options.c_cflag |= CS8;
+
+			tcsetattr(bb->fd, TCSANOW, &options);
+			
+			printf("Opened serial GPS Port\n");
+			bb->ConnectionMode = cmSerial;
+		}
+		else
+		{
+			printf("*** FAILED TO open serial GPS Port ***\n");
+		}
+	}
+	else
+	{
+		bb->address = adr;
+		bb->sda = data;
+		bb->scl = clock;
+		bb->clock_delay = delay;
+		bb->timeout = timeout;
+		bb->Failed = 0;
+
+		
+		// also they should be set low, input - output determines level
+		pinMode(bb->sda, INPUT);
+		pinMode(bb->scl, INPUT);
+
+		digitalWrite(bb->sda, LOW);
+		digitalWrite(bb->scl, LOW);
+
+		pullUpDnControl(bb->sda, PUD_UP);
+		pullUpDnControl(bb->scl, PUD_UP);
+		
+		printf("Opened I2C GPS Port\n");
+		bb->ConnectionMode = cmI2C;
+	}
 
     return 0;
 }
 
-void ResetI2C(struct i2c_info *bb)
+void CloseGPSPort(struct gps_info *bb)
 {
-	int i;
-	
-	pinMode(bb->sda, INPUT);
-	digitalWrite(bb->scl, LOW);
-	
-	for (i=0; i<16; i++)
+	if (bb->ConnectionMode == cmSerial)
 	{
-		pinMode(bb->scl, OUTPUT);
-		usleep(bb->clock_delay);
-		pinMode(bb->scl, INPUT);
-		usleep(bb->clock_delay);
+		close(bb->fd);
 	}
+	else if (bb->ConnectionMode == cmI2C)
+	{
+		int i;
+		
+		pinMode(bb->sda, INPUT);
+		digitalWrite(bb->scl, LOW);
+		
+		for (i=0; i<16; i++)
+		{
+			pinMode(bb->scl, OUTPUT);
+			usleep(bb->clock_delay);
+			pinMode(bb->scl, INPUT);
+			usleep(bb->clock_delay);
+		}
+	}
+	
+	bb->ConnectionMode = cmNone;
 }
 
 // *****************************************************************************
@@ -114,7 +167,7 @@ void BitDelay(uint32_t del)
 // puts clock line high and checks that it does go high. When bit level
 // stretching is used the clock needs checking at each transition
 // *****************************************************************************
-void I2CClockHigh(struct i2c_info *bb)
+void I2CClockHigh(struct gps_info *bb)
 {
     uint32_t to = bb->timeout;
 	
@@ -126,24 +179,24 @@ void I2CClockHigh(struct i2c_info *bb)
 		usleep(1000);
         if(!to--)
 		{
-            fprintf(stderr, "i2c_info: Clock line held by slave\n");
+            fprintf(stderr, "gps_info: Clock line held by slave\n");
 			bb->Failed = 1;
 			return;
         }
     }
 }
 
-void I2CClockLow(struct i2c_info *bb)
+void I2CClockLow(struct gps_info *bb)
 {
 	pinMode(bb->scl, OUTPUT);
 }
 
-void I2CDataLow(struct i2c_info *bb)
+void I2CDataLow(struct gps_info *bb)
 {
 	pinMode(bb->sda, OUTPUT);
 }
 
-void I2CDataHigh(struct i2c_info *bb)
+void I2CDataHigh(struct gps_info *bb)
 {
 	pinMode(bb->sda, INPUT);
 }
@@ -152,7 +205,7 @@ void I2CDataHigh(struct i2c_info *bb)
 // *****************************************************************************
 // Returns 1 if bus is free, i.e. both sda and scl high
 // *****************************************************************************
-int BusIsFree(struct i2c_info *bb)
+int BusIsFree(struct gps_info *bb)
 {
 	return digitalRead(bb->sda) && digitalRead(bb->scl);
 		
@@ -163,7 +216,7 @@ int BusIsFree(struct i2c_info *bb)
 // This is when sda is pulled low when clock is high. This also puls the clock
 // low ready to send or receive data so both sda and scl end up low after this.
 // *****************************************************************************
-void I2CStart(struct i2c_info *bb)
+void I2CStart(struct gps_info *bb)
 {
     uint32_t to = bb->timeout;
     // bus must be free for start condition
@@ -174,7 +227,7 @@ void I2CStart(struct i2c_info *bb)
 
     if (!BusIsFree(bb))
 	{
-        fprintf(stderr, "i2c_info: Cannot set start condition\n");
+        fprintf(stderr, "gps_info: Cannot set start condition\n");
 		bb->Failed = 1;
         return;
     }
@@ -191,7 +244,7 @@ void I2CStart(struct i2c_info *bb)
 // stop condition
 // when the clock is high, sda goes from low to high
 // *****************************************************************************
-void I2CStop(struct i2c_info *bb)
+void I2CStop(struct gps_info *bb)
 {
 	I2CDataLow(bb);
 
@@ -209,7 +262,7 @@ void I2CStop(struct i2c_info *bb)
 // msb first
 // returns 1 for NACK and 0 for ACK (0 is good)
 // *****************************************************************************
-int I2CSend(struct i2c_info *bb, uint8_t value)
+int I2CSend(struct gps_info *bb, uint8_t value)
 {
     uint32_t rv;
     uint8_t j, mask=0x80;
@@ -249,7 +302,7 @@ int I2CSend(struct i2c_info *bb, uint8_t value)
 // Input
 // send: 1=nack, (last byte) 0 = ack (get another)
 // *****************************************************************************
-uint8_t I2CRead(struct i2c_info *bb, uint8_t ack)
+uint8_t I2CRead(struct gps_info *bb, uint8_t ack)
 {
     uint8_t j, data=0;
 
@@ -290,7 +343,7 @@ uint8_t I2CRead(struct i2c_info *bb, uint8_t ack)
 // *****************************************************************************
 // writes buffer
 // *****************************************************************************
-void I2Cputs(struct i2c_info *bb, uint8_t *s, uint32_t len)
+void I2Cputs(struct gps_info *bb, uint8_t *s, uint32_t len)
 {
     I2CStart(bb);
     I2CSend(bb, bb->address * 2); // address
@@ -300,17 +353,33 @@ void I2Cputs(struct i2c_info *bb, uint8_t *s, uint32_t len)
     }
     I2CStop(bb); // stop    
 }
+
 // *****************************************************************************
-// read one byte
+// read one byte from GPS
 // *****************************************************************************
-uint8_t I2CGetc(struct i2c_info *bb)
+uint8_t GPSGetc(struct gps_info *bb)
 {
-    uint8_t rv;
-    I2CStart(bb);
-    I2CSend(bb, (bb->address * 2)+1); // address
-    rv = I2CRead(bb, 1);
-    I2CStop(bb); // stop
-    return rv;    
+    uint8_t Character;
+	
+	Character = 0xFF;
+	
+	if (bb->ConnectionMode == cmSerial)
+	{
+		if (read(bb->fd, &Character, 1) < 0)
+		{
+			bb->Failed = 1;
+			bb->ConnectionMode = cmNone;
+		}
+	}
+	else if (bb->ConnectionMode == cmI2C)
+	{
+		I2CStart(bb);
+		I2CSend(bb, (bb->address * 2)+1); // address
+		Character = I2CRead(bb, 1);
+		I2CStop(bb); // stop
+	}
+	
+    return Character;
 }
 
 int GPSChecksumOK(unsigned char *Buffer, int Count)
@@ -346,12 +415,19 @@ void FixUBXChecksum(unsigned char *Message, int Length)
 }
 
 
-void SendUBX(struct i2c_info *bb, unsigned char *MSG, int len)
+void SendUBX(struct gps_info *bb, unsigned char *MSG, int len)
 {
-	I2Cputs(bb, MSG, len);
+	if (bb->ConnectionMode == cmSerial)
+	{
+		write(bb->fd, MSG, len);
+	}
+	else if (bb->ConnectionMode == cmI2C)
+	{
+		I2Cputs(bb, MSG, len);
+	}
 }
 
-void SetFlightMode(struct i2c_info *bb)
+void SetFlightMode(struct gps_info *bb)
 {
     // Send navigation configuration command
     unsigned char setNav[] = {0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06, 0x03, 0x00, 0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00, 0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0xDC};
@@ -359,7 +435,7 @@ void SetFlightMode(struct i2c_info *bb)
 	printf ("Setting flight mode\n");
 }
 
-void SetPowerMode(struct i2c_info *bb, int SavePower)
+void SetPowerMode(struct gps_info *bb, int SavePower)
 {
 	unsigned char setPSM[] = {0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92 };
   
@@ -372,7 +448,7 @@ void SetPowerMode(struct i2c_info *bb, int SavePower)
 	SendUBX(bb, setPSM, sizeof(setPSM));
 }
 
-void setGPS_GNSS(struct i2c_info *bb)
+void setGPS_GNSS(struct gps_info *bb)
 {
   // Sets CFG-GNSS to disable everything other than GPS GNSS
   // solution. Failure to do this means GPS power saving 
@@ -391,7 +467,7 @@ void setGPS_GNSS(struct i2c_info *bb)
     SendUBX(bb, setgnss, sizeof(setgnss));
 }
 
-void setGPS_DynamicModel6(struct i2c_info *bb)
+void setGPS_DynamicModel6(struct gps_info *bb)
 {
   uint8_t setdm6[] = {
     0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x06,
@@ -417,7 +493,7 @@ float FixPosition(float Position)
 	return Minutes + Seconds * 5 / 3;
 }
 
-void ProcessLine(struct i2c_info *bb, struct TGPS *GPS, char *Buffer, int Count)
+void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 {
 	static SystemTimeHasBeenSet=0;
 	
@@ -556,7 +632,7 @@ void *GPSLoop(void *some_void_ptr)
 {
 	unsigned char Line[100];
 	int id, Length;
-	struct i2c_info bb;
+	struct gps_info bb;
 	struct TGPS *GPS;
 	int SentenceCount;
 	
@@ -572,7 +648,7 @@ void *GPSLoop(void *some_void_ptr)
 
 		printf ("SDA/SCL = %d/%d\n", Config.SDA, Config.SCL);
 		
-		if (OpenI2C(&bb, 0x42, Config.SDA, Config.SCL, 10, 100))		// struct, i2c address, SDA, SCL, us clock delay, timeout ms
+		if (OpenGPSPort(&bb, Config.GPSDevice, 0x42, Config.SDA, Config.SCL, 10, 100))		// struct, i2c address, SDA, SCL, us clock delay, timeout ms
 		{
 			printf("Failed to open I2C\n");
 			exit(1);
@@ -580,7 +656,7 @@ void *GPSLoop(void *some_void_ptr)
 			
         while (!bb.Failed)
         {
-            Character = I2CGetc(&bb);
+            Character = GPSGetc(&bb);
 
 			if (Character == 0xFF)
 			{
@@ -629,7 +705,7 @@ void *GPSLoop(void *some_void_ptr)
             }
 		}
 		
-		ResetI2C(&bb);
+		CloseGPSPort(&bb);
 	}
 }
 

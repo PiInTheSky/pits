@@ -287,18 +287,25 @@ void LoadConfigFile(struct TConfig *Config)
 	// External data file
 	Config->ExternalDataFileName[0] = '\0';
 	ReadString(fp, "external_data", -1, Config->ExternalDataFileName, sizeof(Config->ExternalDataFileName), 0);
-	
-	// I2C overrides.  Only needed for users own boards, or for some of our prototypes
-	if (ReadInteger(fp, "SDA", -1, 0, 0))
-	{
-		Config->SDA = ReadInteger(fp, "SDA", -1, 0, 0);
-		printf ("I2C SDA overridden to %d\n", Config->SDA);
-	}
 
-	if (ReadInteger(fp, "SCL", -1, 0, 0))
+	// Serial GPS
+	Config->GPSDevice[0] = '\0';
+	ReadString(fp, "gps_device", -1, Config->GPSDevice, sizeof(Config->GPSDevice), 0);
+	
+	if (!Config->GPSDevice[0])
 	{
-		Config->SCL = ReadInteger(fp, "SCL", -1, 0, 0);
-		printf ("I2C SCL overridden to %d\n", Config->SCL);
+		// I2C overrides.  Only needed for users own boards, or for some of our prototypes
+		if (ReadInteger(fp, "SDA", -1, 0, 0))
+		{
+			Config->SDA = ReadInteger(fp, "SDA", -1, 0, 0);
+			printf ("I2C SDA overridden to %d\n", Config->SDA);
+		}
+
+		if (ReadInteger(fp, "SCL", -1, 0, 0))
+		{
+			Config->SCL = ReadInteger(fp, "SCL", -1, 0, 0);
+			printf ("I2C SCL overridden to %d\n", Config->SCL);
+		}
 	}
 	
 	Config->InfoMessageCount = ReadInteger(fp, "info_messages", -1, 0, -1);

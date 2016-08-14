@@ -54,6 +54,19 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 CHANGE LOG
 ==========
 
+14/08/2016
+==========
+
+- Added option for serial GPS connection.  Use GPS_Device=/dev/ttyACM0 for example.
+- Re-enabled APRS script
+
+12/08/2016
+==========
+
+- Fixed error where LoRa channel stopped transmitting after a few sentences if SSDV disabled on that channel
+- Increased maximum size of SSDV file to 4096 packets
+- Add option to disable reading of ADC, and also transmission of ADC values
+
 17/06/2016
 ==========
 
