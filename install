@@ -1,45 +1,70 @@
 #!/bin/bash
+ function disable_bt {
+            echo "Detected Raspberry Pi 3...Disabling Bluetooth"
+            echo 'dtoverlay=pi3-disable-bt' | sudo tee -a /boot/config.txt
+            sudo systemctl disable hciuart
+           }
+
+
 echo "Pi in the Sky - Installation"
 echo "============================"
+sleep 2
+
+echo "Installing git..."
+sleep 1
+sudo apt-get update && apt-get install git
+
+echo "Setting up serial ports..."
+sleep 1
+sudo systemctl mask serial-getty@ttyAMA0.service
+sudo sed -e "s/console=serial0,115200//g" -i.backup /boot/cmdline
+
+echo "Enabling OneWire support..."
+sleep 1
+sudo raspi-config nonint do_onewire 0 #Default
 
 rev=$(cat /proc/cpuinfo|grep Revision|awk -F: '$0=$2'|tr -d ' ' )
 echo $rev
 
 case "$rev" in
-        a21041)
-            echo "Pi 2B Detected"
+        a02082)
+            disable_bt
+            ;;
+        a22082)
+            disable_bt
             ;;
         *)
-            echo $"Something else"
-            exit 1
-
-
+            echo "No bluetooth to disable"
+            ;;
 esac
 
+read -n1 -p "Do you want to enable the camera? [Y,n]" doit 
+case $doit in  
+  n|N) ;;
+  *) sudo raspi-config nonint do_camera 0 ;; 
+esac
 
+read -n1 -p "Are you using Lora transmisssion? [Y,n]" doit 
+case $doit in  
+  n|N) ;;
+  *) sudo raspi-config nonint do_spi 0 ;; 
+esac
 
+read -n1 -p "Enable I2C? [Y,n]" doit 
+case $doit in  
+  n|N) ;;
+  *) sudo raspi-config nonint do_i2c 0 ;; 
+esac
 
-
-
-
-
-sudo raspi-config nonint do_spi 0 #Lora board only
-sudo raspi-config nonint do_i2c 0 #default or only for BMP085/180
-sudo raspi-config nonint do_onewire 0 #Default
-
-sudo apt-get update && apt-get install git
-
-sudo raspi-config nonint do_camera 0
-
-
-
-sudo systemctl mask serial-getty@ttyAMA0.service
-#sudo nano /boot/cmdline.txt remove the part that says console=serial0,115200
-
-#sudo nano /boot/config.txt
-#then go to the end of the file and add a new line containing this:
-#dtoverlay=pi3-disable-bt
-sudo systemctl disable hciuart
+read -n1 -p "Are you using a USB Webcam[y,N]" doit 
+case $doit in  
+  n|N) ;;
+  *) 
+      echo "Installing fswebcam"
+      echo "==================="
+      sleep 3
+      sudo apt-get install fswebcam ;; 
+esac
 
 
 echo "Installing PiGPIO"
@@ -69,12 +94,6 @@ git clone https://github.com/fsphil/ssdv.git
 cd ssdv
 sudo make install
 
-echo "Installing fswebcam"
-echo "==================="
-sleep 3
-sudo apt-get install fswebcam
-
-
 echo "Installing Pi in the Sky Software"
 echo "================================="
 
@@ -82,9 +101,3 @@ cd
 git clone https://github.com/PiInTheSky/pits.git
 cd pits
 ./build
-
-
-
-
-
-
