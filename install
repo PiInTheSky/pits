@@ -17,7 +17,6 @@ sleep 2
 
 echo -e "\n\nInstalling git..."
 sleep 1
-#sudo apt-get update && sudo apt-get install -y git
 
 echo -e "\n\nSetting up serial ports..."
 sleep 1
