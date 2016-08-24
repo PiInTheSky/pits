@@ -1,7 +1,7 @@
 #!/bin/bash
  function disable_bt {
             echo "Detected Raspberry Pi 3...Disabling Bluetooth"
-            if grep -q pi3-disable-bt "$File"; then
+            if grep -q pi3-disable-bt "/boot/config.txt"; then
                 echo 'Bluetooth Disabled'
             else
             echo 'dtoverlay=pi3-disable-bt' | sudo tee -a /boot/config.txt
@@ -48,7 +48,7 @@ case $choice in
   *) sudo raspi-config nonint do_camera 0 ;; 
 esac
 
-read -rp $'\n\n\Are you using Lora transmisssion? [Y,n]' choice 
+read -rp $'\n\nAre you using Lora transmisssion? [Y,n]' choice 
 case $choice in  
   n|N) ;;
   *) sudo raspi-config nonint do_spi 0 ;; 
