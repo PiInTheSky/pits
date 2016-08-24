@@ -101,6 +101,5 @@ echo -e "\n\nInstalling Pi in the Sky Software"
 echo "================================="
 
 cd
-git clone https://github.com/PiInTheSky/pits.git
 cd pits
 ./build
