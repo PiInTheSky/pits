@@ -762,6 +762,7 @@ int main(void)
 	GPS.DS18B20Temperature[0] = 0.0;
 	GPS.DS18B20Temperature[1] = 0.0;
 	GPS.BatteryVoltage = 0.0;
+	GPS.BoardCurrent = 0.0;	
 	GPS.BMP180Temperature = 0.0;
 	GPS.Pressure = 0.0;
 	GPS.MaximumAltitude = 0.0;
