@@ -897,10 +897,18 @@ int main(void)
 		{
 			printf ("Older board with SPI ADC\n");
 			
-			if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+			if (Config.LoRaDevices[0].InUse)
 			{
-				fprintf(stderr, "Error creating ADC thread\n");
-				return 1;
+				printf ("Disabling SPI ADC code as LoRa CE0 is enabled!!\n");
+				Config.DisableADC = 1;
+			}
+			else
+			{
+				if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+				{
+					fprintf(stderr, "Error creating ADC thread\n");
+					return 1;
+				}
 			}
 		}
 	}
