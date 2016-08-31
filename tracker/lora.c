@@ -866,24 +866,29 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 
 			// DIO0 / DIO5 overrides
 			Config->LoRaDevices[Channel].DIO0 = ReadInteger(fp, "LORA_DIO0", Channel, 0, Config->LoRaDevices[Channel].DIO0);
-
 			Config->LoRaDevices[Channel].DIO5 = ReadInteger(fp, "LORA_DIO5", Channel, 0, Config->LoRaDevices[Channel].DIO5);
-
 			printf("LORA%d DIO0=%d DIO5=%d\n", Channel, Config->LoRaDevices[Channel].DIO0, Config->LoRaDevices[Channel].DIO5);
 			
-			Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenLow = ReadInteger(fp, "LORA_low_width", Channel, 0, 320);
-			Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenLow = ReadInteger(fp, "LORA_low_height", Channel, 0, 240);
-			printf ("LORA%d Low image size %d x %d pixels\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenLow, Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenLow);
-			
-			Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenHigh = ReadInteger(fp, "LORA_high_width", Channel, 0, 640);
-			Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenHigh = ReadInteger(fp, "LORA_high_height", Channel, 0, 480);
-			printf ("LORA%d High image size %d x %d pixels\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenHigh, Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenHigh);
+			if (Config->Camera)
+			{
+				Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenLow = ReadInteger(fp, "LORA_low_width", Channel, 0, 320);
+				Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenLow = ReadInteger(fp, "LORA_low_height", Channel, 0, 240);
+				printf ("LORA%d Low image size %d x %d pixels\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenLow, Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenLow);
+				
+				Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenHigh = ReadInteger(fp, "LORA_high_width", Channel, 0, 640);
+				Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenHigh = ReadInteger(fp, "LORA_high_height", Channel, 0, 480);
+				printf ("LORA%d High image size %d x %d pixels\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImageWidthWhenHigh, Config->Channels[LORA_CHANNEL+Channel].ImageHeightWhenHigh);
 
-			Config->Channels[LORA_CHANNEL+Channel].ImagePackets = ReadInteger(fp, "LORA_image_packets", Channel, 0, 4);
-			printf ("LORA%d: 1 Telemetry packet every %d image packets\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImagePackets);
-			
-			Config->Channels[LORA_CHANNEL+Channel].ImagePeriod = ReadInteger(fp, "LORA_image_period", Channel, 0, 60);
-			printf ("LORA%d: %d seconds between photographs\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImagePeriod);
+				Config->Channels[LORA_CHANNEL+Channel].ImagePackets = ReadInteger(fp, "LORA_image_packets", Channel, 0, 4);
+				printf ("LORA%d: 1 Telemetry packet every %d image packets\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImagePackets);
+				
+				Config->Channels[LORA_CHANNEL+Channel].ImagePeriod = ReadInteger(fp, "LORA_image_period", Channel, 0, 60);
+				printf ("LORA%d: %d seconds between photographs\n", Channel, Config->Channels[LORA_CHANNEL+Channel].ImagePeriod);
+			}
+			else
+			{
+				Config->Channels[LORA_CHANNEL+Channel].ImagePackets = 0;
+			}
 			
 
 			Config->LoRaDevices[Channel].CycleTime = ReadInteger(fp, "LORA_Cycle", Channel, 0, 0);			
@@ -1158,7 +1163,7 @@ void *LoRaLoop(void *some_void_ptr)
 			{			
 				int PacketLength, MaxImagePackets;
 
-				if (Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode == 0)
+				if ((Config.Channels[LORA_CHANNEL+LoRaChannel].SendMode == 0) || (Config.Channels[LORA_CHANNEL+LoRaChannel].ImagePackets == 0))
 				{
 					int PacketLength;
 
