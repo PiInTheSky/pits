@@ -37,6 +37,8 @@
 #include <ifaddrs.h>
 #include <sys/statvfs.h>
 #include <pigpio.h> 
+#include <inttypes.h>
+
 #include "gps.h"
 #include "DS18B20.h"
 #include "adc.h"
@@ -66,8 +68,6 @@ char *SSDVFolder="/home/pi/pits/tracker/images";
  
 void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
-    int i, j;
-    unsigned char c;
 	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
 	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
@@ -108,7 +108,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
 	}
 	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f%s%s%s",
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32 ",%d,%d,%d,%3.1f%s%s%s",
             Config.Channels[RTTY_CHANNEL].PayloadID,
             SentenceCounter,
 			TimeBuffer,
@@ -326,10 +326,8 @@ void SetMTX2Frequency(char *FrequencyString)
 	int _mtx2int;
 	long _mtx2fractional;
 	char _mtx2command[17];
-	int fd;
 	double Frequency;
-	int i, pulses, wave_id;
-	char *str;
+	int wave_id;
 	
 	if (strlen(FrequencyString) < 3)
 	{
@@ -395,7 +393,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 	// First disable transmitter
 	digitalWrite (NTX2B_ENABLE, 0);
 	pinMode (NTX2B_ENABLE, OUTPUT);
-	delayMilliseconds (200);
+	delay(200);
 	
 	fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);
 	if (fd >= 0)
@@ -421,7 +419,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 		write(fd, setNMEAoff, sizeof(setNMEAoff));
 		tcsetattr(fd, TCSAFLUSH, &options);
 		close(fd);
-		delayMilliseconds (1000);
+		delay(1000);
 		
 		fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);
 		
@@ -441,19 +439,19 @@ void SetNTX2BFrequency(char *FrequencyString)
 		printf("NTX2B-FA transmitter now set to channel %02Xh which is %8.4lfMHz\n", Frequency, (double)(Frequency) * 0.003125 + 434.05);
 
 		// Let enable line float (but Tx will pull it up anyway)
-		delayMilliseconds (200);
+		delay(200);
 		pinMode (NTX2B_ENABLE, INPUT);
 		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-		delayMilliseconds (20);
+		delay(20);
 
 		write(fd, Command, strlen(Command)); 
 		tcsetattr(fd, TCSAFLUSH, &options);
-		delayMilliseconds (50);
+		delay(50);
 
 		close(fd);
 
 		// Switch on the radio
-		delayMilliseconds (100);
+		delay(100);
 		digitalWrite (NTX2B_ENABLE, 1);
 		pinMode (NTX2B_ENABLE, OUTPUT);
 	}
@@ -513,36 +511,17 @@ int OpenSerialPort(void)
 
 void SendSentence(int fd, char *TxLine)
 {
-	// int fd;
+	// printf("Sending sentence ...\n");
+	write(fd, TxLine, strlen(TxLine));
 
-	
-	// if ((fd = OpenSerialPort()) >= 0)
+	// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
+	if (Config.EnableTelemetryLogging)
 	{
-		// printf("Sending sentence ...\n");
-		write(fd, TxLine, strlen(TxLine));
-
-		// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
-		if (Config.EnableTelemetryLogging)
-		{
-			WriteLog("telemetry.txt", TxLine);
-		}
-		
-		// Wait till those characters get sent
-		tcsetattr(fd, TCSAFLUSH, &options);
-		// printf("Sent\n");
-		
-		// if (close(fd) < 0)
-		// {
-			// printf("NOT Sent - error %d\n", errno);
-		// }
+		WriteLog("telemetry.txt", TxLine);
 	}
-	/*
-	else
-	{
-		printf("Failed to open serial port\n");
-	}
-	*/
 	
+	// Wait till those characters get sent
+	tcsetattr(fd, TCSAFLUSH, &options);
 }
 
 int SendRTTYImage(int fd)
@@ -626,19 +605,19 @@ void SendFreeSpace(int fd)
 	}
 }
 
-int LoRaChannelUploadNow(int Channel, struct TGPS *GPS, int PacketTime)
+int LoRaChannelUploadNow(int LoRaChannel, struct TGPS *GPS, int PacketTime)
 {
 	// Can't use time till we have it
-	if ((Config.LoRaDevices[Channel].UplinkCycle > 0) && (Config.LoRaDevices[Channel].UplinkPeriod > 0))
+	if ((Config.LoRaDevices[LoRaChannel].UplinkCycle > 0) && (Config.LoRaDevices[LoRaChannel].UplinkPeriod > 0))
 	{
 		int i;
 		long CycleSeconds;
 		
 		for (i=0; i<=PacketTime; i++)
 		{
-			CycleSeconds = (GPS->SecondsInDay+i) % Config.LoRaDevices[Channel].UplinkCycle;
+			CycleSeconds = (GPS->SecondsInDay+i) % Config.LoRaDevices[LoRaChannel].UplinkCycle;
 	
-			if (CycleSeconds < Config.LoRaDevices[Channel].UplinkPeriod)
+			if (CycleSeconds < Config.LoRaDevices[LoRaChannel].UplinkPeriod)
 			{
 				return 1;
 			}
@@ -661,15 +640,16 @@ int LoRaUploadNow(struct TGPS *GPS, int PacketTime)
 
 int main(void)
 {
-	int fd, ReturnCode, i;
+	int fd=0;
+	int i;
 	unsigned long Sentence_Counter = 0;
 	int ImagePacketCount, MaxImagePackets;
-	char Sentence[100], Command[100];
+	char Sentence[100];
 	struct stat st = {0};
 	struct TGPS GPS;
 	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread;
-	
 	if (prog_count("tracker") > 1)
+	
 	{
 		printf("\nThe tracker program is already running!\n");
 		printf("It is started automatically, with the camera script, when the Pi boots.\n\n");
@@ -681,6 +661,18 @@ int main(void)
 		printf("and then restart manually with\n");
 		printf("	sudo ./tracker\n\n");
 		exit(1);
+	}
+	
+	for (i=0; i<5; i++)
+	{
+		Config.Channels[i].Guard1 = 123;
+		Config.Channels[i].Guard2 = 231;
+	}
+	
+	for (i=0; i<2; i++)
+	{
+		Config.LoRaDevices[i].Guard1 = 91;
+		Config.LoRaDevices[i].Guard2 = 19;
 	}
 	
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
@@ -772,6 +764,7 @@ int main(void)
 	// Set up I/O
 	if (wiringPiSetup() == -1)
 	{
+		printf("Cannot initialise WiringPi\n");
 		exit (1);
 	}
 
@@ -963,7 +956,7 @@ int main(void)
 		}
 	}	
 	
-	if (!Config.DisableRTTY)
+	if (!Config.DisableRTTY && (fd >= 0))
 	{
 		if (Config.InfoMessageCount < 0)
 		{
@@ -984,9 +977,36 @@ int main(void)
 	{
 		static int CarrierOn=1;
 		
-		if (Config.DisableRTTY)
+		for (i=0; i<5; i++)
 		{
-			delayMilliseconds (200);
+			if (Config.Channels[i].Guard1 != 123)
+			{
+				printf("Channel %d Guard1 broken (%d)\n", i, Config.Channels[i].Guard1);
+				exit(1);
+			}
+			if (Config.Channels[i].Guard2 != 231)
+			{
+				printf("Channel %d Guard2 broken (%d)\n", i, Config.Channels[i].Guard2);
+				exit(1);
+			}
+		}
+		for (i=0; i<2; i++)
+		{
+			if (Config.LoRaDevices[i].Guard1 != 91)
+			{
+				printf("LoRaDevices %d Guard3 broken (%d)\n", i, Config.LoRaDevices[i].Guard1);
+				exit(1);
+			}
+			if (Config.LoRaDevices[i].Guard2 != 19)
+			{
+				printf("LoRaDevices %d Guard3 broken (%d)\n", i, Config.LoRaDevices[i].Guard2);
+				exit(1);
+			}
+		}
+
+		if (Config.DisableRTTY || (fd < 0))
+		{
+			delay(200);
 		}
 		else if (LoRaUploadNow(&GPS, 10))
 		{
@@ -996,7 +1016,7 @@ int main(void)
 				CarrierOn = 0;
 				printf("Switching RTTY carrier off\n");
 			}
-			delayMilliseconds (200);
+			delay(200);
 		}
 		else
 		{

@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "gps.h"
 #include "misc.h"
 
@@ -76,7 +77,7 @@ char *ax25_base91enc(char *s, uint8_t n, uint32_t v)
   return(s);
 }
 
-void *ax25_frame(uint8_t *frame, int *length, char *scallsign, char sssid, char *dcallsign, char dssid, char ttl1, char ttl2, char *data, ...)
+void ax25_frame(uint8_t *frame, int *length, char *scallsign, char sssid, char *dcallsign, char dssid, char ttl1, char ttl2, char *data, ...)
 {
   uint8_t *s, j;
   uint16_t CRC;
@@ -315,12 +316,9 @@ void SendAPRS(struct TGPS *GPS)
 	char stlm[9];
 	char slat[5];
 	char slng[5];
-	char comment[3]={' ', ' ', '\0'};
 	double aprs_lat, aprs_lon;
 	int32_t aprs_alt;
 	static uint16_t seq = 0;
-	uint8_t *frame;
-	int i, length;
 	uint32_t aprs_temperature, aprs_voltage;
 
 	seq++;

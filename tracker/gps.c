@@ -10,8 +10,8 @@
 /*                                                                            */
 /*                                                                            */
 /* ========================================================================== */
-// Version 0.1 7/9/2012
-// * removed a line of debug code
+
+#define _GNU_SOURCE 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,15 +41,6 @@ struct gps_info {
 	int fd;			// For serial port GPS
 	enum {cmNone, cmI2C, cmSerial} ConnectionMode;
 };
-
-void delayMilliseconds (unsigned int millis)
-{
-  struct timespec sleeper, dummy ;
-
-  sleeper.tv_sec  = (time_t)(millis / 1000) ;
-  sleeper.tv_nsec = (long)(millis % 1000) * 1000000 ;
-  nanosleep (&sleeper, &dummy) ;
-}
 
 
 // *****************************************************************************
@@ -126,6 +117,15 @@ int OpenGPSPort(struct gps_info *bb,
     return 0;
 }
 
+void BitDelay(uint32_t delay)
+{
+  struct timespec sleeper, dummy ;
+
+  sleeper.tv_sec  = 0;
+  sleeper.tv_nsec = delay;
+  nanosleep (&sleeper, &dummy) ;
+}
+
 void CloseGPSPort(struct gps_info *bb)
 {
 	if (bb->ConnectionMode == cmSerial)
@@ -142,25 +142,15 @@ void CloseGPSPort(struct gps_info *bb)
 		for (i=0; i<16; i++)
 		{
 			pinMode(bb->scl, OUTPUT);
-			usleep(bb->clock_delay);
+			BitDelay(bb->clock_delay);
 			pinMode(bb->scl, INPUT);
-			usleep(bb->clock_delay);
+			BitDelay(bb->clock_delay);
 		}
 	}
 	
 	bb->ConnectionMode = cmNone;
 }
 
-// *****************************************************************************
-// bit delay, determins bus speed. nanosleep does not give the required delay
-// its too much, by about a factor of 100
-// This simple delay using the current Aug 2012 board gives aproximately:
-// 500 = 50kHz. Obviously a better method of delay is needed.
-// *****************************************************************************
-void BitDelay(uint32_t del)
-{
-	usleep(del);
-}
 
 // *****************************************************************************
 // clock with stretch - bit level
@@ -176,7 +166,7 @@ void I2CClockHigh(struct gps_info *bb)
     // check that it is high
 	while (!digitalRead(bb->scl))
 	{
-		usleep(1000);
+		BitDelay(1000);
         if(!to--)
 		{
             fprintf(stderr, "gps_info: Clock line held by slave\n");
@@ -222,7 +212,7 @@ void I2CStart(struct gps_info *bb)
     // bus must be free for start condition
     while(to-- && !BusIsFree(bb))
 	{
-		usleep(1000);
+		BitDelay(1000);
 	}
 
     if (!BusIsFree(bb))
@@ -382,7 +372,7 @@ uint8_t GPSGetc(struct gps_info *bb)
     return Character;
 }
 
-int GPSChecksumOK(unsigned char *Buffer, int Count)
+int GPSChecksumOK(char *Buffer, int Count)
 {
   unsigned char XOR, i, c;
 
@@ -493,9 +483,22 @@ float FixPosition(float Position)
 	return Minutes + Seconds * 5 / 3;
 }
 
+time_t day_seconds()
+{
+    time_t t1, t2;
+    struct tm tms;
+    time(&t1);
+    localtime_r(&t1, &tms);
+    tms.tm_hour = 0;
+    tms.tm_min = 0;
+    tms.tm_sec = 0;
+    t2 = mktime(&tms);
+    return t1 - t2;
+}
+
 void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 {
-	static SystemTimeHasBeenSet=0;
+	static int SystemTimeHasBeenSet=0;
 	
     float utc_time, latitude, longitude, hdop, altitude;
 	int lock, satellites;
@@ -518,6 +521,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 					GPS->Minutes = (utc_seconds / 100) % 100;
 					GPS->Seconds = utc_seconds % 100;
 					GPS->SecondsInDay = GPS->Hours * 3600 + GPS->Minutes * 60 + GPS->Seconds;					
+					// printf("\nGGA: %ld seconds offset\n\n", GPS->SecondsInDay - day_seconds());
 					GPS->Latitude = FixPosition(latitude);
 					if (ns == 'S') GPS->Latitude = -GPS->Latitude;
 					GPS->Longitude = FixPosition(longitude);
@@ -578,6 +582,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 					}
 					else
 					{
+						printf("System time set from GPS time\n");
 						SystemTimeHasBeenSet = 1;
 					}
 				}
@@ -630,8 +635,8 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 
 void *GPSLoop(void *some_void_ptr)
 {
-	unsigned char Line[100];
-	int id, Length;
+	char Line[100];
+	int Length;
 	struct gps_info bb;
 	struct TGPS *GPS;
 	int SentenceCount;
@@ -643,12 +648,11 @@ void *GPSLoop(void *some_void_ptr)
 	
     while (1)
     {
-        int i;
 		unsigned char Character;
 
 		printf ("SDA/SCL = %d/%d\n", Config.SDA, Config.SCL);
 		
-		if (OpenGPSPort(&bb, Config.GPSDevice, 0x42, Config.SDA, Config.SCL, 10, 100))		// struct, i2c address, SDA, SCL, us clock delay, timeout ms
+		if (OpenGPSPort(&bb, Config.GPSDevice, 0x42, Config.SDA, Config.SCL, 2000, 100))		// struct, i2c address, SDA, SCL, ns clock delay, timeout ms
 		{
 			printf("Failed to open I2C\n");
 			exit(1);
@@ -657,10 +661,11 @@ void *GPSLoop(void *some_void_ptr)
         while (!bb.Failed)
         {
             Character = GPSGetc(&bb);
+			// if (Character == 0xFF) printf("."); else printf("%c", Character);
 
 			if (Character == 0xFF)
 			{
-				delayMilliseconds (100);
+				delay(100);
 			}
             else if (Character == '$')
 			{
@@ -699,8 +704,8 @@ void *GPSLoop(void *some_void_ptr)
 						SetFlightMode(&bb);
 					}
 
-					delayMilliseconds (100);
                		Length = 0;
+					delay(100);
                	}
             }
 		}

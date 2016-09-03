@@ -10,6 +10,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <errno.h>
+#include <wiringPiI2C.h>
+#include <wiringPi.h>
 
 
 #include "gps.h"
@@ -23,7 +25,7 @@ int I2CADCExists(void)
 	
 	result = 0;
 	
-	if (fd = open_i2c(MCP3426_ADDRESS))
+	if ((fd = open_i2c(MCP3426_ADDRESS)) >= 0)
 	{
 		if (wiringPiI2CRead(fd) != -1)
 		{
@@ -84,7 +86,7 @@ void *I2CADCLoop(void *some_void_ptr)
 	
 	while (1)
 	{
-		if (fd = open_i2c(MCP3426_ADDRESS))
+		if ((fd = open_i2c(MCP3426_ADDRESS)) >= 0)
 		{
 			double BatteryVoltage, BoardCurrent;
 			

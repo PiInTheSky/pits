@@ -8,6 +8,7 @@ typedef enum {lmIdle, lmListening, lmSending} tLoRaMode;
 
 struct TLoRaDevice
 {
+	int Guard1;
 	int InUse;
 	int DIO0;
 	int DIO5;
@@ -45,6 +46,10 @@ struct TLoRaDevice
 	// Uplink cycle
 	int UplinkPeriod;
 	int UplinkCycle;
+	
+	// Uplink settings
+	int UplinkMode;
+	double UplinkFrequency;
 
 	// Uplink Messaging
 	int EnableMessageStatus;
@@ -54,12 +59,14 @@ struct TLoRaDevice
 	int LastPacketRSSI;
 	int LastPacketSNR;
 	int PacketCount;
+	int Guard2;
 };
 
 struct TSSDVPackets
 {
 	int ImageNumber;
 	int NumberOfPackets;
+	int InUse;
 	unsigned char Packets[MAX_SSDV_PACKETS];
 };
 
@@ -75,6 +82,7 @@ struct TRecentPacket
 // 2/3 are for LoRa
 struct TChannel
 {
+	int Guard1;
 	int Enabled;
 	unsigned int SentenceCounter;
 	char PayloadID[16];
@@ -110,10 +118,8 @@ struct TChannel
 	int SendMode;
 	
 	// SSDV Packet Log
-	struct TSSDVPackets SSDVPackets[3];	
-	
-	// SSDV File Information
-	int NumberOfPacketsInImage[256];
+	struct TSSDVPackets SSDVPackets[3];
+	int Guard2;
 };
 
 #define RTTY_CHANNEL 0
@@ -194,7 +200,7 @@ struct TConfig
 
 extern struct TConfig Config;
 
-char Hex(char Character);
+char Hex(unsigned char Character);
 void WriteLog(char *FileName, char *Buffer);
 short open_i2c(int address);
 int FileExists(char *filename);
@@ -207,3 +213,11 @@ double ReadFloat(FILE *fp, char *keyword, int Channel, int NeedValue, double Def
 void AppendCRC(char *Temp);
 void LogMessage(const char *format, ...);
 int devicetree(void);
+void ProcessSMSUplinkMessage(int LoRaChannel, unsigned char *Message);
+void ProcessSSDVUplinkMessage(int Channel, unsigned char *Message);
+void AddImagePacketToRecentList(int Channel, int ImageNumber, int PacketNumber);
+int ChooseImagePacketToSend(int Channel);
+void StartNewFileIfNeeded(int Channel);
+int prog_count(char* name);
+int GetBoardType(void);
+int NoMoreSSDVPacketsToSend(int Channel);

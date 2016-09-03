@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <linux/i2c-dev.h>
@@ -10,21 +12,23 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <errno.h>
+#include <wiringPi.h>
 #include <wiringPiSPI.h>
 #include "misc.h"
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #define MAX_RECENT 10
 struct TRecentPacket RecentPackets[4][MAX_RECENT];
 
-char Hex(char Character)
+char Hex(unsigned char Character)
 {
 	char HexTable[] = "0123456789ABCDEF";
 	
-	return HexTable[Character];
+	return HexTable[Character & 15];
 }
 
 void WriteLog(char *FileName, char *Buffer)
@@ -42,7 +46,6 @@ int GetBoardType(void)
 {
 	FILE *cpuFd ;
 	char line [120] ;
-	char *c ;
 	static int  boardRev = -1;
 
 	if (boardRev < 0)
@@ -142,13 +145,13 @@ int FileExists(char *filename)
 
 void StartNewFileIfNeeded(int Channel)
 {
-    if (Config.Channels[Channel].ImageFP)
+	if (NoMoreSSDVPacketsToSend(Channel))
 	{
-		// At end of file ?
-		if (Config.Channels[Channel].SSDVPacketNumber >= (Config.Channels[Channel].SSDVNumberOfPackets-1))
+		if (Config.Channels[Channel].ImageFP != NULL)
 		{
 			fclose(Config.Channels[Channel].ImageFP);
 			Config.Channels[Channel].ImageFP = NULL;
+			printf("No more SSDV packets for channel %d\n", Channel);
 		}
 	}
 		
@@ -160,44 +163,43 @@ void StartNewFileIfNeeded(int Channel)
 			// New file should be ready now
 			FILE *fp;
 			
-			printf("File %s found\n", Config.Channels[Channel].ssdv_done);
+			printf("SSDV File %s for channel %d found\n", Config.Channels[Channel].ssdv_done, Channel);
 			
 			// Zap the "done" file and the previous SSDV file
 			remove(Config.Channels[Channel].ssdv_done);
-			// remove(Config.Channels[Channel].current_ssdv);
-			
-			// Rename new file to replace that one
-			// rename(Config.Channels[Channel].next_ssdv, Config.Channels[Channel].current_ssdv);
 			
 			if ((fp = fopen(Config.Channels[Channel].ssdv_filename, "rb")) != NULL)
 			{
 				char filename[100];
 				int RecordCount, i;
-				
-				printf("File %s opened\n", Config.Channels[Channel].ssdv_filename);
-				
+								
 				// That worked so let's get the file size so we can monitor progress
 				fseek(fp, 0L, SEEK_END);
 				RecordCount = ftell(fp) / 256;		// SSDV records are 256 bytes			
 				fclose(fp);
-								
-				// Now fill in list of un-sent packets
-				for (i=0; i<RecordCount; i++)
+				
+				printf("File %s has %d records\n", Config.Channels[Channel].ssdv_filename, RecordCount);
+				
+				// Check against max filesize
+				if (RecordCount <= MAX_SSDV_PACKETS)
 				{
-					// Config.Channels[Channel].SSDVPackets[0].Packets[i] = ((i & 63)<10) || ((i & 63)>30);
-					Config.Channels[Channel].SSDVPackets[0].Packets[i] = 1;
+					// Now fill in list of un-sent packets
+					for (i=0; i<RecordCount; i++)
+					{
+						// Config.Channels[Channel].SSDVPackets[0].Packets[i] = ((i & 63)<10) || ((i & 63)>30);
+						Config.Channels[Channel].SSDVPackets[0].Packets[i] = 1;
+					}
+					Config.Channels[Channel].SSDVPackets[0].NumberOfPackets = RecordCount;
+					Config.Channels[Channel].SSDVPackets[0].ImageNumber = Config.Channels[Channel].SSDVFileNumber;
+					Config.Channels[Channel].SSDVPackets[0].InUse = 1;
 				}
-				Config.Channels[Channel].SSDVPackets[0].NumberOfPackets = RecordCount;
-				Config.Channels[Channel].SSDVPackets[0].ImageNumber = Config.Channels[Channel].SSDVFileNumber;
-				Config.Channels[Channel].NumberOfPacketsInImage[Config.Channels[Channel].SSDVFileNumber] = RecordCount;
-
-				// fseek(Config.Channels[Channel].ImageFP, 0L, SEEK_SET);				
+				else
+				{
+					printf("SSDV IMAGE TOO LARGE\n");
+					exit(1);
+				}
 				
-				// Set record counter back to zero
-				// Config.Channels[Channel].SSDVRecordNumber = 0;
-				
-				// And clear the flag so that the script can be recreated later
-				// Config.Channels[Channel].NextSSDVFileReady = 0;
+				// Clear the flag so that the script can be recreated later
 				sprintf(filename, "ssdv_done_%d", Channel);
 				remove(filename);
 			}
@@ -208,12 +210,13 @@ void StartNewFileIfNeeded(int Channel)
 int FindNextUnsentImagePacket(int Channel, int *ImageNumber, int *PacketNumber, int *NumberOfPackets)
 {
 	int i, j, PacketType;
-	
-	// for (i=0; i<3; i++)
+
+	// Cycle through the 3 packet arrays, starting with the last one (for oldest image, so we get that sent first)
 	for (i=2; i>=0; i--)
 	{
-		if (Config.Channels[Channel].SSDVPackets[i].ImageNumber >= 0)
+		if ((Config.Channels[Channel].SSDVPackets[i].ImageNumber >= 0) && Config.Channels[Channel].SSDVPackets[0].InUse)
 		{
+			// This packet has  an image
 			for (j=0; j<Config.Channels[Channel].SSDVPackets[i].NumberOfPackets; j++)
 			{
 				PacketType = Config.Channels[Channel].SSDVPackets[i].Packets[j];
@@ -232,8 +235,8 @@ int FindNextUnsentImagePacket(int Channel, int *ImageNumber, int *PacketNumber, 
 				}
 			}
 			
-			// This line unused now
-			Config.Channels[Channel].SSDVPackets[i].ImageNumber = -1;
+			// This image array unused now
+			Config.Channels[Channel].SSDVPackets[i].InUse = 0;
 		}
 	}
 	
@@ -245,9 +248,31 @@ int FindNextUnsentImagePacket(int Channel, int *ImageNumber, int *PacketNumber, 
 	return 0;
 }
 
+int NoMoreSSDVPacketsToSend(int Channel)
+{
+	int i, j;
+
+	for (i=0; i<3; i++)
+	{
+		if (Config.Channels[Channel].SSDVPackets[i].ImageNumber >= 0)
+		{
+			// This image is in use
+			for (j=0; j<Config.Channels[Channel].SSDVPackets[i].NumberOfPackets; j++)
+			{
+				if (Config.Channels[Channel].SSDVPackets[i].Packets[j])
+				{
+					return 0;
+				}
+			}		
+		}
+	}
+	
+	return 1;
+}
+
 int ChooseImagePacketToSend(int Channel)
 {
-	int Index, ImageNumber, PacketNumber, NumberOfPackets, ResentPacket;
+	int ImageNumber, PacketNumber, NumberOfPackets, ResentPacket;
 
 	ResentPacket = FindNextUnsentImagePacket(Channel, &ImageNumber, &PacketNumber, &NumberOfPackets);
 
@@ -264,6 +289,7 @@ int ChooseImagePacketToSend(int Channel)
 		// Open file, if we have a packet to send
 		if (ImageNumber >= 0)
 		{
+			// >=0 means there is a packet to send (-1 means there isn't)
 			char FileName[100];
 			
 			sprintf(FileName, "ssdv_%d_%d.bin", Channel, ImageNumber);
@@ -276,9 +302,9 @@ int ChooseImagePacketToSend(int Channel)
 		Config.Channels[Channel].SSDVPacketNumber = -1;
 	}
 		
-	// Different packet to existing
 	if (Config.Channels[Channel].ImageFP)
 	{
+		// So there was a packet, in existing or new file
 		if (PacketNumber != (Config.Channels[Channel].SSDVPacketNumber+1))
 		{
 			// Not the next packet after the last one, in the same file
@@ -300,7 +326,6 @@ int FindImageInList(int Channel, int ImageNumber)
 {
 	int i;
 
-	// First pass - look for this image number
 	for (i=0; i<3; i++)
 	{
 		if (Config.Channels[Channel].SSDVPackets[i].ImageNumber == ImageNumber)
@@ -309,25 +334,9 @@ int FindImageInList(int Channel, int ImageNumber)
 		}
 	}
 	
-	// Second pass - look for unused line
-	for (i=0; i<3; i++)
-	{
-		struct TSSDVPackets ZeroPacket = {0};
-		
-		if (Config.Channels[Channel].SSDVPackets[i].ImageNumber < 0)
-		{
-			Config.Channels[Channel].SSDVPackets[i] = ZeroPacket;
-			
-			Config.Channels[Channel].SSDVPackets[i].ImageNumber = ImageNumber;
-
-			Config.Channels[Channel].SSDVPackets[i].NumberOfPackets = Config.Channels[Channel].NumberOfPacketsInImage[ImageNumber];
-			
-			return i;
-		}
-	}
-	
-	// Not found and already full
+	// Not found
 	printf("FindImageInList - NOT FOUND\n");
+	
 	return -1;
 }
 
@@ -368,18 +377,23 @@ void MarkMissingPacketsBeyond(int Channel, int ImageNumber, int HighestReceived)
 	
 	printf("MarkMissingPacketsBeyond(%d, %d, %d)\n", Channel, ImageNumber, HighestReceived);
 
+	// Find image in our list of 3 recent images
 	if ((Index = FindImageInList(Channel, ImageNumber)) >= 0)
 	{
 		int i;
 		
-		for (i=HighestReceived+1; i<Config.Channels[Channel].NumberOfPacketsInImage[ImageNumber]; i++)
+		// Cycle through packets from highest received on ground(+1), to last packet we read from the SSDV file earlier
+		for (i=HighestReceived+1; i<Config.Channels[Channel].SSDVPackets[Index].NumberOfPackets; i++)
 		{
 			if (!Config.Channels[Channel].SSDVPackets[Index].Packets[i])
 			{
+				// We've already sent the packet
 				if (!ImagePacketRecentlySent(Channel, ImageNumber, i))
 				{
+					// But not recently (recent ones may be queued so don't resend just yet)
 					// printf("Marking image %d index %d packet %d channel %d\n", ImageNumber, Index, i, Channel);
 					Config.Channels[Channel].SSDVPackets[Index].Packets[i] = 2;
+					Config.Channels[Channel].SSDVPackets[Index].InUse = 1;
 				}
 			}
 		}
@@ -418,7 +432,7 @@ void ProcessSMSUplinkMessage(int LoRaChannel, unsigned char *Message)
 	int MessageNumber;
 	FILE *fp;
 	
-	Token = strtok(Message+1, ",");
+	Token = strtok((char *)Message+1, ",");
 	MessageNumber = atoi(Token);
 	
 	sprintf(FileName, "Uplink_%d.sms", MessageNumber);
@@ -448,10 +462,11 @@ void ProcessSSDVUplinkMessage(int Channel, unsigned char *Message)
 	Message++;		// Skip ! at start
 	RangeStart = -1;
 	Temp[0] = '\0';
+	Image = 0;
 		
 	while (*Message)
 	{
-		if (isdigit(*Message))
+		if (isdigit((char)(*Message)))
 		{
 			*ptr++ = *Message;
 			*ptr = '\0';
@@ -614,14 +629,11 @@ int ReadBooleanFromString(FILE *fp, char *keyword, char *searchword)
 void AppendCRC(char *Temp)
 {
 	int i, j, Count;
-	unsigned int CRC, xPolynomial;
+	unsigned int CRC;
 	
     Count = strlen(Temp);
 	
-	// Config->PredictionID	
-
     CRC = 0xffff;           // Seed
-    xPolynomial = 0x1021;
    
      for (i = 2; i < Count; i++)
      {   // For speed, repeat calculation instead of looping for each bit

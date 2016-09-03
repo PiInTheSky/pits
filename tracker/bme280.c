@@ -12,6 +12,7 @@
 #include <sys/shm.h>
 #include <errno.h>
 #include <wiringPiSPI.h>
+#include <inttypes.h>
 
 #include "gps.h"
 #include "misc.h"
@@ -95,7 +96,7 @@ int BMEPresent(struct TBME *bme, int Address)
 	
 	IsPresent = 0;
 	
-	if (bme->fd = open_i2c(Address))
+	if ((bme->fd = open_i2c(Address)) >= 0)
 	{
 		IsPresent = bme280Calibration(bme);
 		
@@ -204,19 +205,11 @@ int16_t bme280ReadInt16(struct TBME *bme, int Register)
 
 int bme280Calibration(struct TBME *bme)
 {
-	// if (bme280ReadInt(bme, 0xAA) < 0)
-	// {
-		// return 0;
-	// }
-	
-	// bme->Md = bme280ReadInt(bme->fd, 0xBE);
-	
-
     bme->T1 = bme280ReadUInt16(bme, BME280_REGISTER_DIG_T1);
 	bme->T2 = bme280ReadInt16(bme, BME280_REGISTER_DIG_T2);
 	bme->T3 = bme280ReadInt16(bme, BME280_REGISTER_DIG_T3);
 	
-	printf("T1=%lu, T2=%ld, T3=%ld\n", bme->T1, bme->T2, bme->T3);
+	printf("T1=%" PRId32 ", T2=%" PRId32 ", T3=%" PRId32 "\n", bme->T1, bme->T2, bme->T3);
 
     bme->P1 = bme280ReadUInt16(bme, BME280_REGISTER_DIG_P1);
     bme->P2 = bme280ReadInt16(bme, BME280_REGISTER_DIG_P2);
@@ -434,7 +427,7 @@ void *BME280Loop(void *some_void_ptr)
 	
 	while (BMEAddress)
 	{
-		if (bme.fd = open_i2c(BMEAddress))
+		if ((bme.fd = open_i2c(BMEAddress)) >= 0)
 		{
 			bme280StartMeasurement(&bme);
 		
@@ -457,8 +450,8 @@ void *BME280Loop(void *some_void_ptr)
 
 		sleep(10);
 	}
-
-    return;
+	
+	return NULL;
 }
 
 
