@@ -191,6 +191,13 @@ void LoadConfigFile(struct TConfig *Config)
 		printf ("Radio baud rate = %d\n", BaudRate);
 	}
 	
+	// Bouy mode for floating trackers
+	Config->BuoyModeAltitude = ReadInteger(fp, "buoy_below", -1, 0, 0);
+	if (Config->BuoyModeAltitude > 0)
+	{
+		printf("Buoy mode enabled for altitudes below %" PRId32 " metres\n", Config->BuoyModeAltitude);
+	}
+	
 	// Logging
 	Config->EnableGPSLogging = ReadBooleanFromString(fp, "logging", "GPS");
 	if (Config->EnableGPSLogging) printf("GPS Logging enabled\n");
@@ -663,18 +670,6 @@ int main(void)
 		exit(1);
 	}
 	
-	for (i=0; i<5; i++)
-	{
-		Config.Channels[i].Guard1 = 123;
-		Config.Channels[i].Guard2 = 231;
-	}
-	
-	for (i=0; i<2; i++)
-	{
-		Config.LoRaDevices[i].Guard1 = 91;
-		Config.LoRaDevices[i].Guard2 = 19;
-	}
-	
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
 
@@ -977,33 +972,6 @@ int main(void)
 	{
 		static int CarrierOn=1;
 		
-		for (i=0; i<5; i++)
-		{
-			if (Config.Channels[i].Guard1 != 123)
-			{
-				printf("Channel %d Guard1 broken (%d)\n", i, Config.Channels[i].Guard1);
-				exit(1);
-			}
-			if (Config.Channels[i].Guard2 != 231)
-			{
-				printf("Channel %d Guard2 broken (%d)\n", i, Config.Channels[i].Guard2);
-				exit(1);
-			}
-		}
-		for (i=0; i<2; i++)
-		{
-			if (Config.LoRaDevices[i].Guard1 != 91)
-			{
-				printf("LoRaDevices %d Guard3 broken (%d)\n", i, Config.LoRaDevices[i].Guard1);
-				exit(1);
-			}
-			if (Config.LoRaDevices[i].Guard2 != 19)
-			{
-				printf("LoRaDevices %d Guard3 broken (%d)\n", i, Config.LoRaDevices[i].Guard2);
-				exit(1);
-			}
-		}
-
 		if (Config.DisableRTTY || (fd < 0))
 		{
 			delay(200);

@@ -8,7 +8,6 @@ typedef enum {lmIdle, lmListening, lmSending} tLoRaMode;
 
 struct TLoRaDevice
 {
-	int Guard1;
 	int InUse;
 	int DIO0;
 	int DIO5;
@@ -42,6 +41,10 @@ struct TLoRaDevice
 	int CallingCount;
 	int PacketsSinceLastCall;
 	int ReturnStateAfterCall;
+	
+	// For placing a pause between packets (e.g. to allow another payload to repeat our packets)
+	int PacketEveryMilliSeconds;
+	int MillisSinceLastPacket;
 
 	// Uplink cycle
 	int UplinkPeriod;
@@ -59,7 +62,6 @@ struct TLoRaDevice
 	int LastPacketRSSI;
 	int LastPacketSNR;
 	int PacketCount;
-	int Guard2;
 };
 
 struct TSSDVPackets
@@ -82,7 +84,6 @@ struct TRecentPacket
 // 2/3 are for LoRa
 struct TChannel
 {
-	int Guard1;
 	int Enabled;
 	unsigned int SentenceCounter;
 	char PayloadID[16];
@@ -119,7 +120,6 @@ struct TChannel
 	
 	// SSDV Packet Log
 	struct TSSDVPackets SSDVPackets[3];
-	int Guard2;
 };
 
 #define RTTY_CHANNEL 0
@@ -134,6 +134,7 @@ struct TConfig
 	int InfoMessageCount;
 	int BoardType;
 	int DisableADC;
+	int32_t BuoyModeAltitude;
 	
 	// Camera
 	int Camera;	

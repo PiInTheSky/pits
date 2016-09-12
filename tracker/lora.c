@@ -209,7 +209,9 @@ void SendLoRaData(int LoRaChannel, unsigned char *buffer, int Length)
 	int i;
 	
 	// printf("LoRa Channel %d Sending %d bytes\n", Channel, Length);
-  
+
+	Config.LoRaDevices[LoRaChannel].MillisSinceLastPacket = 0;
+
 	setMode(LoRaChannel, RF98_MODE_STANDBY);
 	
 	writeRegister(LoRaChannel, REG_DIO_MAPPING_1, 0x40);		// 01 00 00 00 maps DIO0 to TxDone
@@ -356,25 +358,38 @@ int BuildLoRaSentence(unsigned char *TxLine, int LoRaChannel, struct TGPS *GPS)
 		}
 	}
 
-    sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
-            Config.Channels[LORA_CHANNEL+LoRaChannel].PayloadID,
-            Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
-			TimeBuffer,
-            GPS->Latitude,
-            GPS->Longitude,
-            GPS->Altitude,
-			(GPS->Speed * 13) / 7,
-			GPS->Direction,
-			GPS->Satellites,
-            GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
-			ExtraFields1,
-			ExtraFields2,
-			ExtraFields3,
-			ExtraFields4,
-			ExternalFields,
-			ExtraFields5,
-			ExtraFields6);
-			
+	
+	if ((Config.BuoyModeAltitude > 0) && (GPS->Altitude < Config.BuoyModeAltitude))
+	{
+		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf",
+				Config.Channels[LORA_CHANNEL+LoRaChannel].PayloadID,
+				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
+				TimeBuffer,
+				GPS->Latitude,
+				GPS->Longitude);
+	}
+	else
+	{
+		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
+				Config.Channels[LORA_CHANNEL+LoRaChannel].PayloadID,
+				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
+				TimeBuffer,
+				GPS->Latitude,
+				GPS->Longitude,
+				GPS->Altitude,
+				(GPS->Speed * 13) / 7,
+				GPS->Direction,
+				GPS->Satellites,
+				GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
+				ExtraFields1,
+				ExtraFields2,
+				ExtraFields3,
+				ExtraFields4,
+				ExternalFields,
+				ExtraFields5,
+				ExtraFields6);
+	}
+	
 	AppendCRC((char *)TxLine);
 
 	if (Config.PredictionID[0])
@@ -898,8 +913,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 			else
 			{
 				Config->Channels[Channel].ImagePackets = 0;
-			}
-			
+			}			
 
 			Config->LoRaDevices[LoRaChannel].CycleTime = ReadInteger(fp, "LORA_Cycle", LoRaChannel, 0, 0);			
 			if (Config->LoRaDevices[LoRaChannel].CycleTime > 0)
@@ -914,6 +928,15 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 
 				Config->LoRaDevices[LoRaChannel].UplinkSlot = ReadInteger(fp, "LORA_Uplink", LoRaChannel, 0, 0);			
 				printf("LORA%d Uplink Slot %d\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].UplinkSlot);
+			}
+			else
+			{
+				Config->LoRaDevices[LoRaChannel].PacketEveryMilliSeconds = ReadInteger(fp, "LORA_PacketEvery", LoRaChannel, 0, 0);
+				if (Config->LoRaDevices[LoRaChannel].PacketEveryMilliSeconds > 0)
+				{
+					printf ("LORA%d: Packet sent every %d milliseconds\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].PacketEveryMilliSeconds);
+					Config->LoRaDevices[LoRaChannel].MillisSinceLastPacket = Config->LoRaDevices[LoRaChannel].PacketEveryMilliSeconds;
+				}
 			}
 
 			ReadBoolean(fp, "LORA_Binary", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].Binary));			
@@ -1040,7 +1063,8 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 }
 	
 void *LoRaLoop(void *some_void_ptr)
-{
+{	
+	int LoopMS = 5;
 	int LoRaChannel;
 	unsigned char Sentence[200];
 	struct TGPS *GPS;
@@ -1060,12 +1084,12 @@ void *LoRaLoop(void *some_void_ptr)
 	
 	while (1)
 	{	
-		delay(5);								// To stop this loop gobbling up CPU
+		delay(LoopMS);								// To stop this loop gobbling up CPU
 
 		CheckForPacketOnListeningChannels();
 		
 		LoRaChannel = CheckForFreeChannel(GPS);		// 0 or 1 if there's a free channel and we should be sending on that channel now
-		
+
 		if ((LoRaChannel >= 0) && (LoRaChannel <= 1))
 		{
 			int Channel;
@@ -1090,7 +1114,15 @@ void *LoRaLoop(void *some_void_ptr)
 				printf("Reset after Uplink Mode\n");
 			}
 			
-			if (Config.LoRaDevices[LoRaChannel].SendRepeatedPacket == 2)
+			// Now decide what, if anything, to send
+
+			// Handle deliberate delays between packets
+			if ((Config.LoRaDevices[LoRaChannel].PacketEveryMilliSeconds > 0) && ((Config.LoRaDevices[LoRaChannel].MillisSinceLastPacket += LoopMS) < Config.LoRaDevices[LoRaChannel].PacketEveryMilliSeconds))
+			{
+				// Deliberate delay, and we're not there yet
+				// DO NOTHING!
+			}			
+			else if (Config.LoRaDevices[LoRaChannel].SendRepeatedPacket == 2)
 			{
 				printf("Repeating uplink packet of %d bytes\n", Config.LoRaDevices[LoRaChannel].UplinkRepeatLength);
 				
