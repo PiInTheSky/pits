@@ -180,24 +180,21 @@ void StartNewFileIfNeeded(int Channel)
 				
 				printf("File %s has %d records\n", Config.Channels[Channel].ssdv_filename, RecordCount);
 				
-				// Check against max filesize
-				if (RecordCount <= MAX_SSDV_PACKETS)
+				if (RecordCount > MAX_SSDV_PACKETS)
 				{
-					// Now fill in list of un-sent packets
-					for (i=0; i<RecordCount; i++)
-					{
-						// Config.Channels[Channel].SSDVPackets[0].Packets[i] = ((i & 63)<10) || ((i & 63)>30);
-						Config.Channels[Channel].SSDVPackets[0].Packets[i] = 1;
-					}
-					Config.Channels[Channel].SSDVPackets[0].NumberOfPackets = RecordCount;
-					Config.Channels[Channel].SSDVPackets[0].ImageNumber = Config.Channels[Channel].SSDVFileNumber;
-					Config.Channels[Channel].SSDVPackets[0].InUse = 1;
+					printf("SSDV IMAGE IS TOO LARGE AND WILL BE TRUNCATED\n");
+					RecordCount = MAX_SSDV_PACKETS;
 				}
-				else
+				
+				// Now fill in list of un-sent packets
+				for (i=0; i<RecordCount; i++)
 				{
-					printf("SSDV IMAGE TOO LARGE\n");
-					exit(1);
+					// Config.Channels[Channel].SSDVPackets[0].Packets[i] = ((i & 63)<10) || ((i & 63)>30);
+					Config.Channels[Channel].SSDVPackets[0].Packets[i] = 1;
 				}
+				Config.Channels[Channel].SSDVPackets[0].NumberOfPackets = RecordCount;
+				Config.Channels[Channel].SSDVPackets[0].ImageNumber = Config.Channels[Channel].SSDVFileNumber;
+				Config.Channels[Channel].SSDVPackets[0].InUse = 1;
 				
 				// Clear the flag so that the script can be recreated later
 				sprintf(filename, "ssdv_done_%d", Channel);

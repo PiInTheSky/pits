@@ -235,9 +235,16 @@ void LoadConfigFile(struct TConfig *Config)
 	if (Config->Camera)
 	{
 		ReadString(fp, "camera_settings", -1, Config->CameraSettings, sizeof(Config->CameraSettings), 0);
-		if (Config->CameraSettings)
+		if (*Config->CameraSettings)
 		{
 			printf ("Adding custom camera parameters '%s' to raspistill calls\n", Config->CameraSettings);
+		}
+		
+		Config->SSDVSettings[0] = '\0';
+		ReadString(fp, "SSDV_settings", -1, Config->SSDVSettings, sizeof(Config->SSDVSettings), 0);
+		if (*Config->SSDVSettings)
+		{
+			printf ("Adding custom SSDV parameters '%s'\n", Config->SSDVSettings);
 		}
 
 		Config->SSDVHigh = ReadInteger(fp, "high", -1, 0, 2000);
@@ -786,17 +793,7 @@ int main(void)
 
 		digitalWrite (NTX2B_ENABLE, 1);
 	}
-	
-	// Set up DS18B20
-	system("sudo modprobe w1-gpio");
-	system("sudo modprobe w1-therm");
-	
-	if (!devicetree())
-	{
-		// SPI for ADC (older boards), LoRa add-on board
-		system("gpio load spi");
-	}
-
+		
 	// SSDV Folders
 	sprintf(Config.Channels[0].SSDVFolder, "%s/RTTY", SSDVFolder);
 	*Config.Channels[1].SSDVFolder = '\0';										// No folder for APRS images

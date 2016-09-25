@@ -125,7 +125,7 @@ void FindBestImageAndRequestConversion(int Channel)
 			fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
 			fprintf(fp, "fi\n");
 			
-			fprintf(fp, "ssdv -e -c %.6s -i %d %s %s\n", Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
+			fprintf(fp, "ssdv %s -e -c %.6s -i %d %s %s\n", Config.SSDVSettings, Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
 			fprintf(fp, "mkdir -p %s/$1\n", SSDVFolder);
 			fprintf(fp, "mv %s/*.jpg %s/$1\n", SSDVFolder, SSDVFolder);
 			fprintf(fp, "echo DONE > %s\n", Config.Channels[Channel].ssdv_done);

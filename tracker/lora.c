@@ -183,7 +183,7 @@ void setupRFM98(int LoRaChannel)
 
 		if (wiringPiSPISetup(LoRaChannel, 500000) < 0)
 		{
-			fprintf(stderr, "Failed to open SPI port.  Try loading spi library with 'gpio load spi'");
+			fprintf(stderr, "Failed to open SPI port.  Make sure it is enabled in rasp-config");
 			exit(1);
 		}
 		
@@ -1017,10 +1017,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 			
 			if (ReadBoolean(fp, "LORA_Implicit", LoRaChannel, 0, &Temp))
 			{
-				if (Temp)
-				{
-					Config->LoRaDevices[LoRaChannel].ImplicitOrExplicit = IMPLICIT_MODE;
-				}
+				Config->LoRaDevices[LoRaChannel].ImplicitOrExplicit = Temp ? IMPLICIT_MODE : EXPLICIT_MODE;
 			}
 			
 			Temp = ReadInteger(fp, "LORA_Coding", LoRaChannel, 0, 0);
@@ -1032,10 +1029,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 
 			if (ReadBoolean(fp, "LORA_LowOpt", LoRaChannel, 0, &Temp))
 			{
-				if (Temp)
-				{
-					Config->LoRaDevices[LoRaChannel].LowDataRateOptimize = 0x08;
-				}
+				Config->LoRaDevices[LoRaChannel].LowDataRateOptimize = Temp ? 0x08 : 0;
 			}
 
 			Config->LoRaDevices[LoRaChannel].Power = ReadInteger(fp, "LORA_Power", LoRaChannel, 0, PA_MAX_UK);

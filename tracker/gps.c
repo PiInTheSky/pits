@@ -655,7 +655,7 @@ void *GPSLoop(void *some_void_ptr)
 		if (OpenGPSPort(&bb, Config.GPSDevice, 0x42, Config.SDA, Config.SCL, 2000, 100))		// struct, i2c address, SDA, SCL, ns clock delay, timeout ms
 		{
 			printf("Failed to open I2C\n");
-			exit(1);
+			bb.Failed = 1;
 		}
 			
         while (!bb.Failed)

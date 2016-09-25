@@ -54,6 +54,14 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 CHANGE LOG
 ==========
 
+25/09/2016
+==========
+
+- Added SSDV_settings to pisky.txt - add command-line parameter when calling SSDV program- Removed support for running without device tree
+- Fixed setting of implicit/explicit mode manually, ditto low-data-rate optimisation
+- Truncate SSDV images larger than max size (currently 4096 packets)
+
+
 14/08/2016
 ==========
 
