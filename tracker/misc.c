@@ -54,10 +54,12 @@ int GetBoardType(void)
 		{
 			while (fgets (line, 120, cpuFd) != NULL)
 			{
+				line[strcspn(line, "\n")] = '\0';			// Remove LF
+				
 				if (strncmp (line, "Hardware", 8) == 0)
 				{
-					printf ("RPi %s", line);
-					if (strstr (line, "BCM2709") != NULL)
+					printf ("RPi %s\n", line);
+					if (strcmp (line, "BCM2709") == 0)
 					{
 						boardRev = 2;
 					}
@@ -66,34 +68,45 @@ int GetBoardType(void)
 				if (strncmp (line, "Revision", 8) == 0)
 				{
 					if (boardRev < 0)
-					{
-						printf ("RPi %s", line);
-						if ((strstr(line, "900092") != NULL) ||
-						         (strstr(line, "920092") != NULL) ||
-						         (strstr(line, "900093") != NULL))
+					{	
+						char *ptr;
+						
+						ptr = strchr(line, ':') + 2;
+						
+						if (strncmp(ptr, "1000", 4) == 0)
+						{
+							// Pi has been overvoltaged so skip the marker
+							ptr += 4;
+						}
+						
+						printf ("RPi %s\n", line);
+						
+						if ((strcmp(ptr, "900092") == 0) ||
+						    (strcmp(ptr, "920092") == 0) ||
+						    (strcmp(ptr, "900093") == 0))
 						{
 							// Zero
 							boardRev = 3;
 						}
-						else if ((strstr(line, "0002") != NULL) ||
-							(strstr(line, "0003") != NULL) ||
-							(strstr(line, "0004") != NULL) ||
-							(strstr(line, "0005") != NULL) ||
-							(strstr(line, "0006") != NULL) ||
-							(strstr(line, "0007") != NULL) ||
-							(strstr(line, "0008") != NULL) ||
-							(strstr(line, "0009") != NULL) ||
-							(strstr(line, "000d") != NULL) ||
-							(strstr(line, "000e") != NULL) ||
-							(strstr(line, "000f") != NULL))
+						else if ((strcmp(ptr, "0002") == 0) ||
+								 (strcmp(ptr, "0003") == 0) ||
+								 (strcmp(ptr, "0004") == 0) ||
+								 (strcmp(ptr, "0005") == 0) ||
+								 (strcmp(ptr, "0006") == 0) ||
+								 (strcmp(ptr, "0007") == 0) ||
+								 (strcmp(ptr, "0008") == 0) ||
+								 (strcmp(ptr, "0009") == 0) ||
+								 (strcmp(ptr, "000d") == 0) ||
+								 (strcmp(ptr, "000e") == 0) ||
+								 (strcmp(ptr, "000f") == 0))
 						{
 							// A or B
 							boardRev = 0;
 						}
-						else if ((strstr(line, "0015") != NULL) ||
-							(strstr(line, "0010") != NULL) ||
-							(strstr(line, "0012") != NULL) ||
-							(strstr(line, "0013") != NULL))
+						else if ((strcmp(ptr, "0015") == 0) ||
+								 (strcmp(ptr, "0010") == 0) ||
+								 (strcmp(ptr, "0012") == 0) ||
+								 (strcmp(ptr, "0013") == 0))
 						{
 							// B+ or A+
 							boardRev = 1;
