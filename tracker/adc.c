@@ -47,7 +47,6 @@ double ReadADC(int chan, double FullScale)
 void *ADCLoop(void *some_void_ptr)
 {
 	double BatteryVoltage, BoardCurrent;
-	FILE *fp;
 	struct TGPS *GPS;
 
 	GPS = (struct TGPS *)some_void_ptr;

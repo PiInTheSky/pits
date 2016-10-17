@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <wiringPiSPI.h>
 #include <gertboard.h>
+#include <inttypes.h>
 
 #include "gps.h"
 #include "misc.h"
@@ -69,9 +70,8 @@ int TimeTillImageCompleted(int Channel)
 
 void FindBestImageAndRequestConversion(int Channel)
 {
-	static char *SubFolder[4] = {"RTTY", "APRS", "LORA0", "LORA1"};
 	size_t LargestFileSize;
-	char LargestFileName[100], FileName[100], CommandLine[200];
+	char LargestFileName[100], FileName[100];
 	DIR *dp;
 	struct dirent *ep;
 	struct stat st;
@@ -83,7 +83,7 @@ void FindBestImageAndRequestConversion(int Channel)
 	dp = opendir(SSDVFolder);
 	if (dp != NULL)
 	{
-		while (ep = readdir (dp))
+		while ((ep = readdir (dp)) != NULL)
 		{
 			if (strstr(ep->d_name, ".jpg") != NULL)
 			{
@@ -104,9 +104,6 @@ void FindBestImageAndRequestConversion(int Channel)
 
 	if (LargestFileSize > 0)
 	{
-		char Date[20], SavedImageFolder[100];
-		time_t now;
-		struct tm *t;
 		FILE *fp;
 		
 		printf("Found file %s to convert\n", LargestFileName);
@@ -128,7 +125,7 @@ void FindBestImageAndRequestConversion(int Channel)
 			fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
 			fprintf(fp, "fi\n");
 			
-			fprintf(fp, "ssdv -e -c %.6s -i %d %s %s\n", Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
+			fprintf(fp, "ssdv %s -e -c %.6s -i %d %s %s\n", Config.SSDVSettings, Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
 			fprintf(fp, "mkdir -p %s/$1\n", SSDVFolder);
 			fprintf(fp, "mv %s/*.jpg %s/$1\n", SSDVFolder, SSDVFolder);
 			fprintf(fp, "echo DONE > %s\n", Config.Channels[Channel].ssdv_done);
@@ -162,7 +159,6 @@ void *CameraLoop(void *some_void_ptr)
 			{
 				// Channel using SSDV
 				
-				// if ((++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod) || (TimeTillImageCompleted(Channel) < 15))
 				if (++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod)
 				{
 					// Time to take a photo on this channel
@@ -247,7 +243,7 @@ void *CameraLoop(void *some_void_ptr)
 							{
 								Mode = 0;
 							}
-							fprintf(fp, "exiv2 -c'Alt=%ld;MaxAlt=%ld;Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
+							fprintf(fp, "exiv2 -c'Alt=%" PRId32 ";MaxAlt=%" PRId32 ";Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
 												GPS->Altitude,
 												GPS->MaximumAltitude,
 												GPS->Latitude,

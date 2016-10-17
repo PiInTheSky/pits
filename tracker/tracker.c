@@ -37,6 +37,8 @@
 #include <ifaddrs.h>
 #include <sys/statvfs.h>
 #include <pigpio.h> 
+#include <inttypes.h>
+
 #include "gps.h"
 #include "DS18B20.h"
 #include "adc.h"
@@ -66,8 +68,6 @@ char *SSDVFolder="/home/pi/pits/tracker/images";
  
 void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 {
-    int i, j;
-    unsigned char c;
 	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
 	
 	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
@@ -76,9 +76,9 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 	ExtraFields2[0] = '\0';
 	ExtraFields3[0] = '\0';
 	
-	if (Config.BoardType == 3)
+	if ((Config.BoardType == 3) || (Config.DisableADC))
 	{
-			// Pi Zero.  No ADC on the PITS Zero
+			// Pi Zero - no ADC on the PITS Zero, or manually disabled ADC
 	}
 	else if (Config.BoardType == 0)
 	{
@@ -108,7 +108,7 @@ void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
 	}
 	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%05.5ld,%d,%d,%d,%3.1f%s%s%s",
+    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32 ",%d,%d,%d,%3.1f%s%s%s",
             Config.Channels[RTTY_CHANNEL].PayloadID,
             SentenceCounter,
 			TimeBuffer,
@@ -164,6 +164,7 @@ void LoadConfigFile(struct TConfig *Config)
 		printf("HDMI/Composite outputs will be disabled\n");
 	}
 	
+	ReadBoolean(fp, "Disable_ADC", -1, 0, &(Config->DisableADC));
 	ReadBoolean(fp, "Disable_RTTY", -1, 0, &(Config->DisableRTTY));
 	Config->Channels[RTTY_CHANNEL].Enabled = !Config->DisableRTTY;
 	if (Config->DisableRTTY)
@@ -188,6 +189,13 @@ void LoadConfigFile(struct TConfig *Config)
 			exit(1);
 		}
 		printf ("Radio baud rate = %d\n", BaudRate);
+	}
+	
+	// Bouy mode for floating trackers
+	Config->BuoyModeAltitude = ReadInteger(fp, "buoy_below", -1, 0, 0);
+	if (Config->BuoyModeAltitude > 0)
+	{
+		printf("Buoy mode enabled for altitudes below %" PRId32 " metres\n", Config->BuoyModeAltitude);
 	}
 	
 	// Logging
@@ -227,9 +235,16 @@ void LoadConfigFile(struct TConfig *Config)
 	if (Config->Camera)
 	{
 		ReadString(fp, "camera_settings", -1, Config->CameraSettings, sizeof(Config->CameraSettings), 0);
-		if (Config->CameraSettings)
+		if (*Config->CameraSettings)
 		{
 			printf ("Adding custom camera parameters '%s' to raspistill calls\n", Config->CameraSettings);
+		}
+		
+		Config->SSDVSettings[0] = '\0';
+		ReadString(fp, "SSDV_settings", -1, Config->SSDVSettings, sizeof(Config->SSDVSettings), 0);
+		if (*Config->SSDVSettings)
+		{
+			printf ("Adding custom SSDV parameters '%s'\n", Config->SSDVSettings);
 		}
 
 		Config->SSDVHigh = ReadInteger(fp, "high", -1, 0, 2000);
@@ -286,18 +301,25 @@ void LoadConfigFile(struct TConfig *Config)
 	// External data file
 	Config->ExternalDataFileName[0] = '\0';
 	ReadString(fp, "external_data", -1, Config->ExternalDataFileName, sizeof(Config->ExternalDataFileName), 0);
-	
-	// I2C overrides.  Only needed for users own boards, or for some of our prototypes
-	if (ReadInteger(fp, "SDA", -1, 0, 0))
-	{
-		Config->SDA = ReadInteger(fp, "SDA", -1, 0, 0);
-		printf ("I2C SDA overridden to %d\n", Config->SDA);
-	}
 
-	if (ReadInteger(fp, "SCL", -1, 0, 0))
+	// Serial GPS
+	Config->GPSDevice[0] = '\0';
+	ReadString(fp, "gps_device", -1, Config->GPSDevice, sizeof(Config->GPSDevice), 0);
+	
+	if (!Config->GPSDevice[0])
 	{
-		Config->SCL = ReadInteger(fp, "SCL", -1, 0, 0);
-		printf ("I2C SCL overridden to %d\n", Config->SCL);
+		// I2C overrides.  Only needed for users own boards, or for some of our prototypes
+		if (ReadInteger(fp, "SDA", -1, 0, 0))
+		{
+			Config->SDA = ReadInteger(fp, "SDA", -1, 0, 0);
+			printf ("I2C SDA overridden to %d\n", Config->SDA);
+		}
+
+		if (ReadInteger(fp, "SCL", -1, 0, 0))
+		{
+			Config->SCL = ReadInteger(fp, "SCL", -1, 0, 0);
+			printf ("I2C SCL overridden to %d\n", Config->SCL);
+		}
 	}
 	
 	Config->InfoMessageCount = ReadInteger(fp, "info_messages", -1, 0, -1);
@@ -318,10 +340,8 @@ void SetMTX2Frequency(char *FrequencyString)
 	int _mtx2int;
 	long _mtx2fractional;
 	char _mtx2command[17];
-	int fd;
 	double Frequency;
-	int i, pulses, wave_id;
-	char *str;
+	int wave_id;
 	
 	if (strlen(FrequencyString) < 3)
 	{
@@ -387,7 +407,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 	// First disable transmitter
 	digitalWrite (NTX2B_ENABLE, 0);
 	pinMode (NTX2B_ENABLE, OUTPUT);
-	delayMilliseconds (200);
+	delay(200);
 	
 	fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);
 	if (fd >= 0)
@@ -413,7 +433,7 @@ void SetNTX2BFrequency(char *FrequencyString)
 		write(fd, setNMEAoff, sizeof(setNMEAoff));
 		tcsetattr(fd, TCSAFLUSH, &options);
 		close(fd);
-		delayMilliseconds (1000);
+		delay(1000);
 		
 		fd = open(SerialPortName(), O_WRONLY | O_NOCTTY);
 		
@@ -433,19 +453,19 @@ void SetNTX2BFrequency(char *FrequencyString)
 		printf("NTX2B-FA transmitter now set to channel %02Xh which is %8.4lfMHz\n", Frequency, (double)(Frequency) * 0.003125 + 434.05);
 
 		// Let enable line float (but Tx will pull it up anyway)
-		delayMilliseconds (200);
+		delay(200);
 		pinMode (NTX2B_ENABLE, INPUT);
 		pullUpDnControl(NTX2B_ENABLE, PUD_OFF);
-		delayMilliseconds (20);
+		delay(20);
 
 		write(fd, Command, strlen(Command)); 
 		tcsetattr(fd, TCSAFLUSH, &options);
-		delayMilliseconds (50);
+		delay(50);
 
 		close(fd);
 
 		// Switch on the radio
-		delayMilliseconds (100);
+		delay(100);
 		digitalWrite (NTX2B_ENABLE, 1);
 		pinMode (NTX2B_ENABLE, OUTPUT);
 	}
@@ -505,36 +525,17 @@ int OpenSerialPort(void)
 
 void SendSentence(int fd, char *TxLine)
 {
-	// int fd;
+	// printf("Sending sentence ...\n");
+	write(fd, TxLine, strlen(TxLine));
 
-	
-	// if ((fd = OpenSerialPort()) >= 0)
+	// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
+	if (Config.EnableTelemetryLogging)
 	{
-		// printf("Sending sentence ...\n");
-		write(fd, TxLine, strlen(TxLine));
-
-		// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
-		if (Config.EnableTelemetryLogging)
-		{
-			WriteLog("telemetry.txt", TxLine);
-		}
-		
-		// Wait till those characters get sent
-		tcsetattr(fd, TCSAFLUSH, &options);
-		// printf("Sent\n");
-		
-		// if (close(fd) < 0)
-		// {
-			// printf("NOT Sent - error %d\n", errno);
-		// }
+		WriteLog("telemetry.txt", TxLine);
 	}
-	/*
-	else
-	{
-		printf("Failed to open serial port\n");
-	}
-	*/
 	
+	// Wait till those characters get sent
+	tcsetattr(fd, TCSAFLUSH, &options);
 }
 
 int SendRTTYImage(int fd)
@@ -618,19 +619,19 @@ void SendFreeSpace(int fd)
 	}
 }
 
-int LoRaChannelUploadNow(int Channel, struct TGPS *GPS, int PacketTime)
+int LoRaChannelUploadNow(int LoRaChannel, struct TGPS *GPS, int PacketTime)
 {
 	// Can't use time till we have it
-	if ((Config.LoRaDevices[Channel].UplinkCycle > 0) && (Config.LoRaDevices[Channel].UplinkPeriod > 0))
+	if ((Config.LoRaDevices[LoRaChannel].UplinkCycle > 0) && (Config.LoRaDevices[LoRaChannel].UplinkPeriod > 0))
 	{
 		int i;
 		long CycleSeconds;
 		
 		for (i=0; i<=PacketTime; i++)
 		{
-			CycleSeconds = (GPS->SecondsInDay+i) % Config.LoRaDevices[Channel].UplinkCycle;
+			CycleSeconds = (GPS->SecondsInDay+i) % Config.LoRaDevices[LoRaChannel].UplinkCycle;
 	
-			if (CycleSeconds < Config.LoRaDevices[Channel].UplinkPeriod)
+			if (CycleSeconds < Config.LoRaDevices[LoRaChannel].UplinkPeriod)
 			{
 				return 1;
 			}
@@ -653,15 +654,16 @@ int LoRaUploadNow(struct TGPS *GPS, int PacketTime)
 
 int main(void)
 {
-	int fd, ReturnCode, i;
+	int fd=0;
+	int i;
 	unsigned long Sentence_Counter = 0;
 	int ImagePacketCount, MaxImagePackets;
-	char Sentence[100], Command[100];
+	char Sentence[100];
 	struct stat st = {0};
 	struct TGPS GPS;
 	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread;
-	
 	if (prog_count("tracker") > 1)
+	
 	{
 		printf("\nThe tracker program is already running!\n");
 		printf("It is started automatically, with the camera script, when the Pi boots.\n\n");
@@ -754,6 +756,7 @@ int main(void)
 	GPS.DS18B20Temperature[0] = 0.0;
 	GPS.DS18B20Temperature[1] = 0.0;
 	GPS.BatteryVoltage = 0.0;
+	GPS.BoardCurrent = 0.0;	
 	GPS.BMP180Temperature = 0.0;
 	GPS.Pressure = 0.0;
 	GPS.MaximumAltitude = 0.0;
@@ -763,6 +766,7 @@ int main(void)
 	// Set up I/O
 	if (wiringPiSetup() == -1)
 	{
+		printf("Cannot initialise WiringPi\n");
 		exit (1);
 	}
 
@@ -789,17 +793,7 @@ int main(void)
 
 		digitalWrite (NTX2B_ENABLE, 1);
 	}
-	
-	// Set up DS18B20
-	system("sudo modprobe w1-gpio");
-	system("sudo modprobe w1-therm");
-	
-	if (!devicetree())
-	{
-		// SPI for ADC (older boards), LoRa add-on board
-		system("gpio load spi");
-	}
-
+		
 	// SSDV Folders
 	sprintf(Config.Channels[0].SSDVFolder, "%s/RTTY", SSDVFolder);
 	*Config.Channels[1].SSDVFolder = '\0';										// No folder for APRS images
@@ -871,7 +865,7 @@ int main(void)
 		return 1;
 	}
 
-	if (Config.BoardType != 3)
+	if ((Config.BoardType != 3) && (!Config.DisableADC))
 	{
 		// Not a zero, so should have ADC on it
 		if (I2CADCExists())
@@ -888,10 +882,18 @@ int main(void)
 		{
 			printf ("Older board with SPI ADC\n");
 			
-			if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+			if (Config.LoRaDevices[0].InUse)
 			{
-				fprintf(stderr, "Error creating ADC thread\n");
-				return 1;
+				printf ("Disabling SPI ADC code as LoRa CE0 is enabled!!\n");
+				Config.DisableADC = 1;
+			}
+			else
+			{
+				if (pthread_create(&ADCThread, NULL, ADCLoop, &GPS))
+				{
+					fprintf(stderr, "Error creating ADC thread\n");
+					return 1;
+				}
 			}
 		}
 	}
@@ -946,7 +948,7 @@ int main(void)
 		}
 	}	
 	
-	if (!Config.DisableRTTY)
+	if (!Config.DisableRTTY && (fd >= 0))
 	{
 		if (Config.InfoMessageCount < 0)
 		{
@@ -967,9 +969,9 @@ int main(void)
 	{
 		static int CarrierOn=1;
 		
-		if (Config.DisableRTTY)
+		if (Config.DisableRTTY || (fd < 0))
 		{
-			delayMilliseconds (200);
+			delay(200);
 		}
 		else if (LoRaUploadNow(&GPS, 10))
 		{
@@ -979,7 +981,7 @@ int main(void)
 				CarrierOn = 0;
 				printf("Switching RTTY carrier off\n");
 			}
-			delayMilliseconds (200);
+			delay(200);
 		}
 		else
 		{

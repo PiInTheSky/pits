@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <math.h>
+#include <inttypes.h>
 
 #include "gps.h"
 #include "misc.h"
@@ -74,6 +75,8 @@ void *PredictionLoop(void *some_void_ptr)
 
 	GPS = (struct TGPS *)some_void_ptr;
 	
+	PreviousLatitude = 0;
+	PreviousLongitude = 0;
 	PreviousAltitude = 0;
 	
 	CDA = Config.cd_area;
@@ -101,7 +104,7 @@ void *PredictionLoop(void *some_void_ptr)
 					Positions[Slot].LatitudeDelta = (GPS->Latitude - PreviousLatitude) / POLL_PERIOD;
 					// Positions[Slot].LongitudeDelta = (GPS->Longitude - PreviousLongitude) * cos(((GPS->Latitude + PreviousLatitude)/2) * DEG2RAD) / POLL_PERIOD;
 					Positions[Slot].LongitudeDelta = (GPS->Longitude - PreviousLongitude) / POLL_PERIOD;
-					printf("Slot %d (%lu): %lf, %lf\n", Slot, GPS->Altitude, Positions[Slot].LatitudeDelta, Positions[Slot].LongitudeDelta);
+					printf("Slot %d (%" PRId32 "): %lf, %lf\n", Slot, GPS->Altitude, Positions[Slot].LatitudeDelta, Positions[Slot].LongitudeDelta);
 				}
   				else if ((GPS->MaximumAltitude > 5000) && (PreviousAltitude < GPS->MaximumAltitude) && (GPS->Altitude < PreviousAltitude) && (GPS->Altitude > 100))
 				{
@@ -145,10 +148,10 @@ void *PredictionLoop(void *some_void_ptr)
 						CalculateDescentRate(Config.payload_weight, Config.cd_area, 100),
 						TimeTillLanding);
 
-				printf("Current    %f, %f, alt %lu\n", GPS->Latitude, GPS->Longitude, GPS->Altitude);
+				printf("Current    %f, %f, alt %" PRId32 "\n", GPS->Latitude, GPS->Longitude, GPS->Altitude);
 				printf("Prediction %f, %f, CDA %lf\n", GPS->PredictedLatitude, GPS->PredictedLongitude, CDA);
 				
-				sprintf(Temp, "%lu, %f, %f, %f, %f, %lf\n", GPS->Altitude, GPS->Latitude, GPS->Longitude, GPS->PredictedLatitude, GPS->PredictedLongitude, CDA);
+				sprintf(Temp, "%" PRId32 ", %f, %f, %f, %f, %lf\n", GPS->Altitude, GPS->Latitude, GPS->Longitude, GPS->PredictedLatitude, GPS->PredictedLongitude, CDA);
 				WriteLog("prediction.txt", Temp);
 			}
 			

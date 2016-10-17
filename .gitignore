@@ -8,8 +8,10 @@ tracker/ssdv_done_*
 tracker/coonvert_*
 tracker/tweets.log
 *.jpg
+*.sms
+*.old
 telemetry.txt
 gps.txt
-take*.txt
-convert*.txt
+take*
+convert*
 *.bin

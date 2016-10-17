@@ -18,7 +18,6 @@
 void *LogLoop(void *some_void_ptr)
 {
 	struct TGPS *GPS;
-	int Flash;
 
 	GPS = (struct TGPS *)some_void_ptr;
 	

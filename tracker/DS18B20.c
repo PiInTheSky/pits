@@ -20,7 +20,7 @@ void *DS18B20Loop(void *some_void_ptr)
 	char *folder = "/sys/bus/w1/devices";
 	FILE *fp;
 	char line[100], filename[100];
-	char *token, *value;
+	char *value;
 	float Temperature;
 	struct TGPS *GPS;
 	int SensorCount;
@@ -49,7 +49,7 @@ void *DS18B20Loop(void *some_void_ptr)
 								{
 									if (fgets(line, sizeof(line), fp) != NULL)
 									{
-										token = strtok(line, "=");
+										strtok(line, "=");
 										value = strtok(NULL, "\n");
 										Temperature = atof(value) / 1000;
 										// printf("%d: %5.3fC\n", SensorCount, Temperature);

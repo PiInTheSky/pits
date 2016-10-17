@@ -49,7 +49,7 @@ void *BMP085Loop(void *some_void_ptr)
 	GPS = (struct TGPS *)some_void_ptr;
 
 	// Initialise BMP085
-	if (bmp.fd = open_i2c(BMP085_ADDRESS))
+	if ((bmp.fd = open_i2c(BMP085_ADDRESS)) >= 0)
 	{
 		int NoBMP;
 		
@@ -68,7 +68,7 @@ void *BMP085Loop(void *some_void_ptr)
 	
 	while (1)
 	{
-		if (bmp.fd = open_i2c(BMP085_ADDRESS))
+		if ((bmp.fd = open_i2c(BMP085_ADDRESS)) >= 0)
 		{
 			GPS->BMP180Temperature = bmp085GetTemperature(&bmp);
 			GPS->Pressure = bmp085GetPressure(&bmp, GPS->BMP180Temperature);

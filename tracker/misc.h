@@ -1,5 +1,7 @@
 // Globals
 
+#define	MAX_SSDV_PACKETS	4096
+
 #include <termios.h>
 
 typedef enum {lmIdle, lmListening, lmSending} tLoRaMode;
@@ -39,10 +41,18 @@ struct TLoRaDevice
 	int CallingCount;
 	int PacketsSinceLastCall;
 	int ReturnStateAfterCall;
+	
+	// For placing a pause between packets (e.g. to allow another payload to repeat our packets)
+	int PacketEveryMilliSeconds;
+	int MillisSinceLastPacket;
 
 	// Uplink cycle
 	int UplinkPeriod;
 	int UplinkCycle;
+	
+	// Uplink settings
+	int UplinkMode;
+	double UplinkFrequency;
 
 	// Uplink Messaging
 	int EnableMessageStatus;
@@ -58,7 +68,8 @@ struct TSSDVPackets
 {
 	int ImageNumber;
 	int NumberOfPackets;
-	unsigned char Packets[1024];
+	int InUse;
+	unsigned char Packets[MAX_SSDV_PACKETS];
 };
 
 struct TRecentPacket
@@ -108,10 +119,7 @@ struct TChannel
 	int SendMode;
 	
 	// SSDV Packet Log
-	struct TSSDVPackets SSDVPackets[3];	
-	
-	// SSDV File Information
-	int NumberOfPacketsInImage[256];
+	struct TSSDVPackets SSDVPackets[3];
 };
 
 #define RTTY_CHANNEL 0
@@ -125,11 +133,14 @@ struct TConfig
 	int DisableMonitor;
 	int InfoMessageCount;
 	int BoardType;
+	int DisableADC;
+	int32_t BuoyModeAltitude;
 	
 	// Camera
 	int Camera;	
 	int SSDVHigh;
 	char CameraSettings[80];
+	char SSDVSettings[16];
 	
 	// Extra devices
 	int EnableBMP085;
@@ -149,6 +160,7 @@ struct TConfig
 	// GPS Settings
 	int SDA;
 	int SCL;
+	char GPSDevice[64];
 	
 	// RTTY Settings
 	int DisableRTTY;
@@ -190,7 +202,7 @@ struct TConfig
 
 extern struct TConfig Config;
 
-char Hex(char Character);
+char Hex(unsigned char Character);
 void WriteLog(char *FileName, char *Buffer);
 short open_i2c(int address);
 int FileExists(char *filename);
@@ -203,3 +215,11 @@ double ReadFloat(FILE *fp, char *keyword, int Channel, int NeedValue, double Def
 void AppendCRC(char *Temp);
 void LogMessage(const char *format, ...);
 int devicetree(void);
+void ProcessSMSUplinkMessage(int LoRaChannel, unsigned char *Message);
+void ProcessSSDVUplinkMessage(int Channel, unsigned char *Message);
+void AddImagePacketToRecentList(int Channel, int ImageNumber, int PacketNumber);
+int ChooseImagePacketToSend(int Channel);
+void StartNewFileIfNeeded(int Channel);
+int prog_count(char* name);
+int GetBoardType(void);
+int NoMoreSSDVPacketsToSend(int Channel);
