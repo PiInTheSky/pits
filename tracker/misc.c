@@ -544,14 +544,17 @@ void ReadString(FILE *fp, char *keyword, int Channel, char *Result, int Length, 
 	{
 		line[strcspn(line, "\r")] = '\0';			// Ignore any CR (in case someone has edited the file from Windows with notepad)
 		
-		token = strtok(line, "=");
-		if (strcasecmp(FullKeyWord, token) == 0)
+		if (*line)
 		{
-			value = strtok(NULL, "\n");
-			strncpy(Result, value, Length);
-			if (Length) Result[Length-1] = '\0';
+			token = strtok(line, "=");
+			if (strcasecmp(FullKeyWord, token) == 0)
+			{
+				value = strtok(NULL, "\n");
+				strncpy(Result, value, Length);
+				if (Length) Result[Length-1] = '\0';
 
-			return;
+				return;
+			}
 		}
 	}
 
