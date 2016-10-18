@@ -82,8 +82,9 @@ int GetBoardType(void)
 						printf ("RPi %s\n", line);
 						
 						if ((strcmp(ptr, "900092") == 0) ||
+						    (strcmp(ptr, "900093") == 0) ||
 						    (strcmp(ptr, "920092") == 0) ||
-						    (strcmp(ptr, "900093") == 0))
+							(strcmp(ptr, "920093") == 0))
 						{
 							// Zero
 							boardRev = 3;
