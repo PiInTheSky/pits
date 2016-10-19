@@ -22,6 +22,7 @@ struct TGPS
 	int FlightMode;
 	int PowerMode;
 	int Lock;
+	unsigned int MessageCount;
 } GPS;
 
 

@@ -28,7 +28,7 @@ void *LEDLoop(void *some_void_ptr)
 	
 	while (1)
 	{
-		digitalWrite (Config.LED_Warn, (GPS->Satellites < 4) && (GPS->Altitude < 2000));	
+		digitalWrite (Config.LED_Warn, (GPS->Satellites < 4) && (GPS->Altitude < 2000) && (GPS->MessageCount & 1));	
 		digitalWrite (Config.LED_OK, (GPS->Satellites >= 4) && (GPS->Altitude < 2000) && (Flash ^= 1));	
 
 		sleep(1);
