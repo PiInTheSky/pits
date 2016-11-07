@@ -68,7 +68,7 @@ int TimeTillImageCompleted(int Channel)
 */	
 }
 
-void FindBestImageAndRequestConversion(int Channel)
+void FindBestImageAndRequestConversion(int Channel, int width, int height)
 {
 	size_t LargestFileSize;
 	char LargestFileName[100], FileName[100];
@@ -120,9 +120,18 @@ void FindBestImageAndRequestConversion(int Channel)
 			fprintf(fp, "rm -f ssdv.jpg\n");
 			fprintf(fp, "if [ -e process_image ]\n");
 			fprintf(fp, "then\n");
-			fprintf(fp, "	./process_image %d %s\n", Channel, LargestFileName);
+			fprintf(fp, "	./process_image %d %s %d %d\n", Channel, LargestFileName, width, height);
 			fprintf(fp, "else\n");
-			fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
+			// Just copy file, unless we're using gphoto2 in which case we need to resize, meaning imagemagick *must* be installed
+			if (Config.Camera == 3)
+			{
+				// resize
+				fprintf(fp, "	convert %s -resize %dx%d ssdv.jpg\n", LargestFileName, width, height);
+			}
+			else
+			{
+				fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
+			}
 			fprintf(fp, "fi\n");
 			
 			fprintf(fp, "ssdv %s -e -c %.6s -i %d %s %s\n", Config.SSDVSettings, Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
@@ -133,6 +142,27 @@ void FindBestImageAndRequestConversion(int Channel)
 			chmod(Config.Channels[Channel].convert_file, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 		}
 	}
+}
+
+void GetWidthAndHeightForChannel(struct TGPS *GPS, int Channel, int *width, int *height)
+{
+	if (GPS->Altitude >= Config.SSDVHigh)
+	{
+		*width = Config.Channels[Channel].ImageWidthWhenHigh;
+		*height = Config.Channels[Channel].ImageHeightWhenHigh;
+	}
+	else
+	{
+		*width = Config.Channels[Channel].ImageWidthWhenLow;
+		*height = Config.Channels[Channel].ImageHeightWhenLow;
+	}
+	
+	if (*width < 320) *width = 320;
+	if (*height < 240) *height = 240;					
+
+	// SSDV requires dimensions to be multiples of 16 pixels
+	*width = (*width / 16) * 16;
+	*height = (*height / 16) * 16;
 }
 
 void *CameraLoop(void *some_void_ptr)
@@ -165,24 +195,8 @@ void *CameraLoop(void *some_void_ptr)
 
 					Config.Channels[Channel].TimeSinceLastImage = 0;
 					
-					if (GPS->Altitude >= Config.SSDVHigh)
-					{
-						width = Config.Channels[Channel].ImageWidthWhenHigh;
-						height = Config.Channels[Channel].ImageHeightWhenHigh;
-					}
-					else
-					{
-						width = Config.Channels[Channel].ImageWidthWhenLow;
-						height = Config.Channels[Channel].ImageHeightWhenLow;
-					}
-					
-					if (width < 320) width = 320;
-					if (height < 240) height = 240;					
-
-					// SSDV requires dimensions to be multiples of 16 pixels
-					width = (width / 16) * 16;
-					height = (height / 16) * 16;
-					
+					GetWidthAndHeightForChannel(GPS, Channel, &width, &height);
+										
 					// Create name of file
 					sprintf(filename, "/home/pi/pits/tracker/take_pic_%d", Channel);
 					
@@ -202,7 +216,18 @@ void *CameraLoop(void *some_void_ptr)
 
 								sprintf(FileName, "%s/$2/$1.jpg", Config.Channels[Channel].SSDVFolder);				
 
-								if (Config.Camera == 2)
+								if (Config.Camera == 3)
+								{
+									if (access("take_photo",  X_OK) == 0)
+									{
+										fprintf(fp, "./take_photo %s\n", FileName);
+									}
+									else
+									{
+										fprintf(fp, "gphoto2 --capture-image-and-download --force-overwrite --filename %s\n", FileName);
+									}
+								}
+								else if (Config.Camera == 2)
 								{
 									fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
 								}
@@ -215,7 +240,12 @@ void *CameraLoop(void *some_void_ptr)
 							{
 								sprintf(FileName, "%s/$1.jpg", Config.Channels[Channel].SSDVFolder);
 
-								if (Config.Camera == 2)
+								if (Config.Camera == 3)
+								{
+									// For gphoto2 we do full-res now and resize later
+									fprintf(fp, "gphoto2 --capture-image-and-download --force-overwrite --filename %s\n", FileName);
+								}
+								else if (Config.Camera == 2)
 								{
 									fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
 								}
@@ -270,8 +300,11 @@ void *CameraLoop(void *some_void_ptr)
 						// Need converted file soon
 						if (!FileExists(Config.Channels[Channel].convert_file) && !FileExists(Config.Channels[Channel].ssdv_done))
 						{
+							// Get these in case script needs to resize large images (e.g. from SLR or compact camera)
+							GetWidthAndHeightForChannel(GPS, Channel, &width, &height);
+							
 							// Find image to use, then request conversion (done externally)
-							FindBestImageAndRequestConversion(Channel);
+							FindBestImageAndRequestConversion(Channel, width, height);
 						}
 					}
 				}

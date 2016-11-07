@@ -147,7 +147,7 @@ speed_t BaudToSpeed(int baud)
 
 void LoadConfigFile(struct TConfig *Config)
 {
-	const char* CameraTypes[3] = {"None", "CSI - raspistill", "USB - fswebcam"};
+	const char* CameraTypes[4] = {"None", "CSI Pi Camera - raspistill", "USB webcam - fswebcam", "USB camera - gphoto2"};
 	FILE *fp;
 	int BaudRate;
 	char *filename = "/boot/pisky.txt";

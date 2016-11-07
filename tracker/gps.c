@@ -57,6 +57,7 @@ int OpenGPSPort(struct gps_info *bb,
 				uint32_t timeout) // clock stretch & timeout
 {
 	bb->fd = -1;
+	bb->Failed = 0;
 	bb->ConnectionMode = cmNone;
 	
 	if (*SerialDevice)
@@ -88,6 +89,7 @@ int OpenGPSPort(struct gps_info *bb,
 		else
 		{
 			printf("*** FAILED TO open serial GPS Port ***\n");
+			bb->Failed = 1;
 		}
 	}
 	else
@@ -97,8 +99,6 @@ int OpenGPSPort(struct gps_info *bb,
 		bb->scl = clock;
 		bb->clock_delay = delay;
 		bb->timeout = timeout;
-		bb->Failed = 0;
-
 		
 		// also they should be set low, input - output determines level
 		pinMode(bb->sda, INPUT);
@@ -114,7 +114,7 @@ int OpenGPSPort(struct gps_info *bb,
 		bb->ConnectionMode = cmI2C;
 	}
 
-    return 0;
+    return bb->Failed;
 }
 
 void BitDelay(uint32_t delay)
@@ -655,7 +655,7 @@ void *GPSLoop(void *some_void_ptr)
 		
 		if (OpenGPSPort(&bb, Config.GPSDevice, 0x42, Config.SDA, Config.SCL, 2000, 100))		// struct, i2c address, SDA, SCL, ns clock delay, timeout ms
 		{
-			printf("Failed to open I2C\n");
+			printf("Failed to open GPS\n");
 			bb.Failed = 1;
 		}
 			

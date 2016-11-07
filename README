@@ -14,10 +14,40 @@ INSTALLING
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
+
+USB CAMERA
+==========
+
+To use a USB camera (i.e. a compact or SLR) instead of the Pi camera, you need to install gphoto2 and imagemagick:
+
+	sudo apt-get install gphoto2 imagemagick
+
+and you need to edit /boot/pisky.txt and change the "camera" line to be:
+
+	Camera=G
+
+(G/g are for gphoto2, U/F/u/f for fswebcam; N/n is for no camera, Y/y/1/TC/c is for CSI camera).
+
+The camera must be able to support remote capture as well as image download, and this excludes a large number of cameras in particular all Canon compacts since 2009.
+There's a list of cameras at http://www.gphoto.org/doc/remote/.
+
+The image resolution is not controlled so you should set this up in the camera.  Images are stored on the camera's memory card and also the Pi SD card, so ensure that both have sufficient free capacity.
+
+If you are transmitting images with SSDV, then these need to be resized before transmission.  This is configured in pisky.txt in the usual way. 
+The process though is different - the camera takes the full sized image, and this image is downloaded to the Pi unaltered.  Before transmission the selected images are then resized using imagemagick.
+So, regardless of the image size settings in pisky.txt, the Pi SD card will contain the full-size images.
+
+PITS does not set the camera exposure.  Normally with the camera set to an automatic exposure mode you will get plenty of good images, but you can of course set it to any mode you wish including manual.
+If you wish to control this from the software rather than on the camera, then create an executable script "take_image" (there is a sample supplied as "take_image.sample").
+Note that most settings are only available in the more basic modes - e.g. the aperture can only be controlled in aperture-priority or manual modes.
+
+gphoto2 needs more work than the other camera options, and we strongly recommend some experimentation with the camera you intend to use.  See http://gphoto.org/doc/manual/using-gphoto2.html.
+
+
 USB WEBCAM
 ==========
 
-The Pi Zero does not have a CSI camera port, so if you want to use it with a camera then you'll need to add a USB webcam.  To do that, you need to install fswebcam:
+To use a USB webcam instead of the Pi camera, you need to install fswebcam:
 
 	sudo apt-get install fswebcam
 
@@ -25,23 +55,6 @@ and you need to edit /boot/pisky.txt and change the "camera" line to be:
 
 	Camera=U
 
-(U/F/u/f all work to enable USB/fswebcam; N/n is for no camera, Y/y/1/TC/c is for CSI camera).
-
-DEVTREE
-=======
-
-If you wish to enable devtree (e.g. to use PITS with the Astro Pi board) then you will need to make a small edit to enable the DS18B20 temperature sensor, otherwise all readings will be zero.  Search for "Pi DS18B20 device tree" for information.
-
-RASPBIAN JESSIE
-===============
-
-We do not recommend the full version of Jessie as it starts the graphical X environment by default, and uses a lot of SD card space.  Instead, install the "Lite" version.
-
-The Lite version does not include "git" so you will need to install that yourself, with:
-
-	sudo apt-get install git
-
-(this is included in the instructions linked above).
 
 IMAGE PROCESSING
 ================
@@ -54,6 +67,27 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 CHANGE LOG
 ==========
 
+07/11/2016
+==========
+
+- Added support for USB cameras via gphoto2
+
+19/09/2016
+==========
+
+- Red (warn) LED now flashes during wait for GPS lock; if it's on without flashing then there is no GPS data (which means GPS misconfigured, or Pi revision not recognised)
+
+18/09/2016
+==========
+
+- Full list of Pi Zero boards
+- Ignore empty CRLF lines in pisky.txt
+
+29/09/2016
+==========
+
+- Better CPU/Pi test
+
 25/09/2016
 ==========
 
@@ -61,6 +95,11 @@ CHANGE LOG
 - Fixed setting of implicit/explicit mode manually, ditto low-data-rate optimisation
 - Truncate SSDV images larger than max size (currently 4096 packets)
 
+12/09/2016
+==========
+
+- Settable delay between packets
+- Minimal "buoy mode" telemetry
 
 14/08/2016
 ==========

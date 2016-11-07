@@ -610,6 +610,11 @@ int ReadCameraType(FILE *fp, char *keyword)
 		return 2;		// USB (fswebcam) Camera
 	}
 	
+	if ((*Temp == 'G') || (*Temp == 'g'))
+	{
+		return 3;		// GPHOTO2
+	}
+	
 	return 0;
 }
 
