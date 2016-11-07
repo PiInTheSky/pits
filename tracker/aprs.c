@@ -247,9 +247,9 @@ void make_and_write_byte(FILE *f, UL cycles_per_bit, UL baud, UL lfreq, UL hfreq
 void makeafsk(UL freq, UL baud, UL lfreq, UL hfreq, unsigned char Message[4][200], int message_length[], int message_count, int total_message_length)
 {
 	UL preamble_length, postamble_length, flags_before, flags_after, cycles_per_bit, cycles_per_byte, total_cycles;
-	UC* m;
 	FILE *f;
 	int i, j;
+	WAVHDR Header;
 	
 	if ((f = fopen("aprs.wav","wb")) != NULL)
 	{
@@ -270,14 +270,12 @@ void makeafsk(UL freq, UL baud, UL lfreq, UL hfreq, unsigned char Message[4][200
 					   ((preamble_length + postamble_length) * cycles_per_bit * message_count);
 
 		// Make header
-		m = malloc(44);
-		wavhdr(m, freq, total_cycles * 2 + 10);		// * 2 + 10 is new
+		wavhdr(&Header, freq, total_cycles * 2 + 10);		// * 2 + 10 is new
 		
 		// Write wav header
-		fwrite(m, 1, 44, f);
+		fwrite(&Header, 1, 44, f);
 		
 		// Write preamble
-		
 		for (j=0; j<message_count; j++)
 		{
 			for (i=0; i<flags_before; i++)
