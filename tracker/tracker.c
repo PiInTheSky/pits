@@ -680,7 +680,7 @@ int main(void)
 	printf("\n\nRASPBERRY PI-IN-THE-SKY FLIGHT COMPUTER\n");
 	printf(    "=======================================\n\n");
 
-	Config.BoardType = GetBoardType();
+	Config.BoardType = GetBoardType(&Config.i2cChannel);
 
 	if (Config.BoardType)
 	{

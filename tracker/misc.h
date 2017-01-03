@@ -133,6 +133,7 @@ struct TConfig
 	int DisableMonitor;
 	int InfoMessageCount;
 	int BoardType;
+	int i2cChannel;
 	int DisableADC;
 	int32_t BuoyModeAltitude;
 	
@@ -221,5 +222,5 @@ void AddImagePacketToRecentList(int Channel, int ImageNumber, int PacketNumber);
 int ChooseImagePacketToSend(int Channel);
 void StartNewFileIfNeeded(int Channel);
 int prog_count(char* name);
-int GetBoardType(void);
+int GetBoardType(int *i2cChannel);
 int NoMoreSSDVPacketsToSend(int Channel);

@@ -42,12 +42,14 @@ void WriteLog(char *FileName, char *Buffer)
 	}
 }
 
-int GetBoardType(void)
+int GetBoardType(int *i2cChannel)
 {
 	FILE *cpuFd ;
 	char line [120] ;
 	static int  boardRev = -1;
 
+	*i2cChannel = 1;
+	
 	if (boardRev < 0)
 	{
 		if ((cpuFd = fopen ("/proc/cpuinfo", "r")) != NULL)
@@ -103,6 +105,11 @@ int GetBoardType(void)
 						{
 							// A or B
 							boardRev = 0;
+							if ((strcmp(ptr, "0002") == 0) || (strcmp(ptr, "0003") == 0))
+							{
+								// Really really old model A/B that uses I2C channel 0 on GPIO pins
+								*i2cChannel = 0;
+							}
 						}
 						else if ((strcmp(ptr, "0015") == 0) ||
 								 (strcmp(ptr, "0010") == 0) ||
@@ -133,7 +140,7 @@ short open_i2c(int address)
 	short fd;
 	char i2c_dev[16];
 
-	sprintf(i2c_dev, "/dev/i2c-%d", piBoardRev()-1);
+	sprintf(i2c_dev, "/dev/i2c-%d", Config.i2cChannel);
 
 	if ((fd = open(i2c_dev, O_RDWR)) < 0)
 	{                                        // Open port for reading and writing
