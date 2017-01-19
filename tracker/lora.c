@@ -380,7 +380,7 @@ int BuildLoRaSentence(unsigned char *TxLine, int LoRaChannel, struct TGPS *GPS)
 				(GPS->Speed * 13) / 7,
 				GPS->Direction,
 				GPS->Satellites,
-				GPS->DS18B20Temperature[1-Config.ExternalDS18B20],
+				GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
 				ExtraFields1,
 				ExtraFields2,
 				ExtraFields3,
