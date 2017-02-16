@@ -1,7 +1,7 @@
 #!/bin/bash
 echo Processing image $2 for channel $1
 #
-# This script gets telemetry from the jpeg file comment field, and overlays image with altitude and a Pi logo
+# This script gets telemetry from the jpeg file comment field, and overlays image with altitude etc.
 #
 rm -f ssdv.jpg
 TELEMETRY="$(exiv2 -pc $2)"

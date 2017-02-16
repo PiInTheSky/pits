@@ -66,68 +66,6 @@ int Records, FileNumber;
 struct termios options;
 char *SSDVFolder="/home/pi/pits/tracker/images";
  
-void BuildSentence(char *TxLine, int SentenceCounter, struct TGPS *GPS)
-{
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20];
-	
-	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
-	
-	ExtraFields1[0] = '\0';
-	ExtraFields2[0] = '\0';
-	ExtraFields3[0] = '\0';
-	
-	if ((Config.BoardType == 3) || (Config.DisableADC))
-	{
-			// Pi Zero - no ADC on the PITS Zero, or manually disabled ADC
-	}
-	else if (Config.BoardType == 0)
-	{
-		// Pi A or B.  Only Battery Voltage on the PITS
-		
-		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
-	}
-	else
-	{
-		// Pi A+ or B+ (V1 or V2 or V3).  Full ADC for voltage and current
-
-		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
-	}
-	
-	if (Config.EnableBMP085)
-	{
-		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
-	}
-	
-	if (Config.EnableBME280)
-	{
-		sprintf(ExtraFields2, ",%.1f,%.0f,%0.1f", GPS->BMP180Temperature, GPS->Pressure, GPS->Humidity);
-	}
-	
-	if (GPS->DS18B20Count > 1)
-	{
-		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
-	}
-	
-    sprintf(TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32 ",%d,%d,%d,%3.1f%s%s%s",
-            Config.Channels[RTTY_CHANNEL].PayloadID,
-            SentenceCounter,
-			TimeBuffer,
-            GPS->Latitude,
-            GPS->Longitude,
-            GPS->Altitude,
-			(GPS->Speed * 13) / 7,
-			GPS->Direction,
-			GPS->Satellites,            
-            GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
-			ExtraFields1,
-			ExtraFields2,
-			ExtraFields3);
-
-	AppendCRC(TxLine);
-	
-    LogMessage("RTTY: %.70s", TxLine);
-}
-
 
 speed_t BaudToSpeed(int baud)
 {
@@ -656,9 +594,8 @@ int main(void)
 {
 	int fd=0;
 	int i;
-	unsigned long Sentence_Counter = 0;
 	int ImagePacketCount, MaxImagePackets;
-	char Sentence[100];
+	unsigned char Sentence[200];
 	struct stat st = {0};
 	struct TGPS GPS;
 	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread;
@@ -1002,9 +939,11 @@ int main(void)
 			{
 				ImagePacketCount = 0;
 				
-				BuildSentence(Sentence, ++Sentence_Counter, &GPS);
-			
-				SendSentence(fd, Sentence);
+				BuildSentence(Sentence, RTTY_CHANNEL, &GPS);
+
+				LogMessage("RTTY: %.70s", Sentence);
+
+				SendSentence(fd, (char *)Sentence);
 			}
 		}
 	}

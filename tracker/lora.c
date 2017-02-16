@@ -15,7 +15,6 @@
 #include <pthread.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
-#include <inttypes.h>
 
 #include "gps.h"
 #include "DS18B20.h"
@@ -154,8 +153,6 @@ void setLoRaMode(int LoRaChannel)
 	{
 		SetLoRaFrequency(LoRaChannel, Frequency);
 	}
-
-	printf("Mode = %d\n", readRegister(LoRaChannel, REG_OPMODE));
 }
 
 void SetLoRaParameters(int LoRaChannel, int ImplicitOrExplicit, int ErrorCoding, int Bandwidth, int SpreadingFactor, int LowDataRateOptimize)
@@ -208,7 +205,7 @@ void SendLoRaData(int LoRaChannel, unsigned char *buffer, int Length)
 	unsigned char data[257];
 	int i;
 	
-	// printf("LoRa Channel %d Sending %d bytes\n", Channel, Length);
+	// printf("LoRa Channel %d Sending %d bytes\n", LoRaChannel, Length);
 
 	Config.LoRaDevices[LoRaChannel].MillisSinceLastPacket = 0;
 
@@ -253,163 +250,6 @@ int BuildLoRaCall(unsigned char *TxLine, int LoRaChannel)
 	return strlen((char *)TxLine) + 1;
 }
 
-
-int BuildLoRaSentence(unsigned char *TxLine, int LoRaChannel, struct TGPS *GPS)
-{
-	static char ExternalFields[100];
-	static FILE *ExternalFile=NULL;
-	static int FirstTime=1;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32], ExtraFields5[32], ExtraFields6[32];
-	
-	if (FirstTime)
-	{
-		FirstTime = 0;
-		ExternalFields[0] = '\0';
-	}
-	
-	Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter++;
-	
-	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
-	
-	ExtraFields1[0] = '\0';
-	ExtraFields2[0] = '\0';
-	ExtraFields3[0] = '\0';
-	ExtraFields4[0] = '\0';
-	ExtraFields5[0] = '\0';
-	ExtraFields6[0] = '\0';
-	
-	if ((Config.BoardType == 3) || (Config.DisableADC))
-	{
-	}
-	else if (Config.BoardType == 0)
-	{
-		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
-	}
-	else
-	{
-		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
-	}
-	
-	if (Config.EnableBMP085)
-	{
-		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
-	}
-	
-	if (GPS->DS18B20Count > 1)
-	{
-		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
-	}
-	
-	if (Config.EnableLandingPrediction && (Config.PredictionID[0] == '\0'))
-	{	
-		sprintf(ExtraFields4, ",%7.5lf,%7.5lf", GPS->PredictedLatitude, GPS->PredictedLongitude);
-	}
-	
-	if (Config.LoRaDevices[LoRaChannel].EnableRSSIStatus)
-	{	
-		sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[LoRaChannel].LastPacketRSSI,
-										   Config.LoRaDevices[LoRaChannel].LastPacketSNR,
-										   Config.LoRaDevices[LoRaChannel].PacketCount);
-	}
-
-	if (Config.LoRaDevices[LoRaChannel].EnableMessageStatus)
-	{	
-		sprintf(ExtraFields6, ",%d,%d", Config.LoRaDevices[LoRaChannel].LastMessageNumber, Config.LoRaDevices[LoRaChannel].MessageCount);
-	}
-
-	// Read latest data from external file
-	if (Config.ExternalDataFileName[0])
-	{
-		if (ExternalFile == NULL)
-		{
-			{
-				// Try to open external file
-				ExternalFile = fopen(Config.ExternalDataFileName, "rt");
-			}
-		}
-		else
-		{
-			// Check if file has been deleted
-			if (access(Config.ExternalDataFileName, F_OK ) == -1 )
-			{
-				// It's been deleted
-				ExternalFile = NULL;
-			}
-		}
-		
-		if (ExternalFile)
-		{
-			char line[100];
-			
-			line[0] = '\0';
-			
-			// Keep reading lines till we get to the end
-			while (fgets(line, sizeof(line), ExternalFile) != NULL)
-			{
-			}
-			
-			if (line[0])
-			{
-				line[strcspn(line, "\n")] = '\0';
-				sprintf(ExternalFields, ",%s", line);
-			}
-			fseek(ExternalFile, 0, SEEK_END);
-			// clearerr(ExternalFile);
-		}
-	}
-
-	
-	if ((Config.BuoyModeAltitude > 0) && (GPS->Altitude < Config.BuoyModeAltitude))
-	{
-		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf",
-				Config.Channels[LORA_CHANNEL+LoRaChannel].PayloadID,
-				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
-				TimeBuffer,
-				GPS->Latitude,
-				GPS->Longitude);
-	}
-	else
-	{
-		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
-				Config.Channels[LORA_CHANNEL+LoRaChannel].PayloadID,
-				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
-				TimeBuffer,
-				GPS->Latitude,
-				GPS->Longitude,
-				GPS->Altitude,
-				(GPS->Speed * 13) / 7,
-				GPS->Direction,
-				GPS->Satellites,
-				GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
-				ExtraFields1,
-				ExtraFields2,
-				ExtraFields3,
-				ExtraFields4,
-				ExternalFields,
-				ExtraFields5,
-				ExtraFields6);
-	}
-	
-	AppendCRC((char *)TxLine);
-
-	if (Config.PredictionID[0])
-	{
-		char PredictionPayload[64];
-		
-		sprintf(PredictionPayload,
-				"$$%s,%d,%s,%7.5lf,%7.5lf,%u",
-				Config.PredictionID,
-				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
-				TimeBuffer,
-				GPS->PredictedLatitude,
-				GPS->PredictedLongitude,
-				0);
-		AppendCRC((char *)PredictionPayload);
-		strcat((char *)TxLine, PredictionPayload);
-	}
-	
-	return strlen((char *)TxLine) + 1;
-}
 
 int BuildLoRaPositionPacket(unsigned char *TxLine, int LoRaChannel, struct TGPS *GPS)
 {
@@ -1171,7 +1011,7 @@ void *LoRaLoop(void *some_void_ptr)
 					}
 					else
 					{
-						PacketLength = BuildLoRaSentence(Sentence, LoRaChannel, GPS);
+						PacketLength = BuildSentence(Sentence, Channel, GPS);
 						LogMessage("LORA%d: %s", LoRaChannel, Sentence);
 					}
 									

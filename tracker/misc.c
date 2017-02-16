@@ -14,12 +14,15 @@
 #include <errno.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
-#include "misc.h"
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <inttypes.h>
+
+#include "gps.h"
+#include "misc.h"
 
 #define MAX_RECENT 10
 struct TRecentPacket RecentPackets[4][MAX_RECENT];
@@ -761,4 +764,183 @@ int devicetree(void)
   struct stat statBuf ;
 
   return stat ("/proc/device-tree", &statBuf) == 0;
+}
+
+int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
+{
+	static char ExternalFields[100];
+	static FILE *ExternalFile=NULL;
+	static int FirstTime=1;
+	int LoRaChannel;
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32], ExtraFields5[32], ExtraFields6[32];
+	
+	if (FirstTime)
+	{
+		FirstTime = 0;
+		ExternalFields[0] = '\0';
+	}
+	
+	Config.Channels[Channel].SentenceCounter++;
+	
+	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
+	
+	ExtraFields1[0] = '\0';
+	ExtraFields2[0] = '\0';
+	ExtraFields3[0] = '\0';
+	ExtraFields4[0] = '\0';
+	ExtraFields5[0] = '\0';
+	ExtraFields6[0] = '\0';
+	
+	// Battery voltage and current, if available
+	if ((Config.BoardType == 3) || (Config.DisableADC))
+	{
+			// Pi Zero - no ADC on the PITS Zero, or manually disabled ADC
+	}
+	else if (Config.BoardType == 0)
+	{
+		// Pi A or B.  Only Battery Voltage on the PITS
+		
+		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
+	}
+	else
+	{
+		// Pi A+ or B+ (V1 or V2 or V3).  Full ADC for voltage and current
+
+		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
+	}
+	
+	// BMP Pressure/Temperature/Humidity, if available
+	if (Config.EnableBME280)
+	{
+		sprintf(ExtraFields2, ",%.1f,%.0f,%0.1f", GPS->BMP180Temperature, GPS->Pressure, GPS->Humidity);
+	}
+	else if (Config.EnableBMP085)
+	{
+		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
+	}
+	
+	// Second DS18B20 Temperature Sensor, if available
+	if (GPS->DS18B20Count > 1)
+	{
+		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
+	}
+	
+	// Landing Prediction, if enabled
+	if (Config.EnableLandingPrediction && (Config.PredictionID[0] == '\0'))
+	{	
+		sprintf(ExtraFields4, ",%7.5lf,%7.5lf", GPS->PredictedLatitude, GPS->PredictedLongitude);
+	}
+	
+	// Specific to LoRa Uplink
+	LoRaChannel = Channel - LORA_CHANNEL;
+	if ((LoRaChannel == 0) || (LoRaChannel == 1))
+	{
+		// Fields for LoRa uplink
+		if (Config.LoRaDevices[LoRaChannel].EnableRSSIStatus)
+		{	
+			sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[LoRaChannel].LastPacketRSSI,
+											   Config.LoRaDevices[LoRaChannel].LastPacketSNR,
+											   Config.LoRaDevices[LoRaChannel].PacketCount);
+		}
+
+		if (Config.LoRaDevices[LoRaChannel].EnableMessageStatus)
+		{	
+			sprintf(ExtraFields6, ",%d,%d", Config.LoRaDevices[LoRaChannel].LastMessageNumber, Config.LoRaDevices[LoRaChannel].MessageCount);
+		}
+		
+	}
+	
+	// External CSV file
+	if (Config.ExternalDataFileName[0])
+	{
+		if (ExternalFile == NULL)
+		{
+			{
+				// Try to open external file
+				ExternalFile = fopen(Config.ExternalDataFileName, "rt");
+			}
+		}
+		else
+		{
+			// Check if file has been deleted
+			if (access(Config.ExternalDataFileName, F_OK ) == -1 )
+			{
+				// It's been deleted
+				ExternalFile = NULL;
+			}
+		}
+		
+		if (ExternalFile)
+		{
+			char line[100];
+			
+			line[0] = '\0';
+			
+			// Keep reading lines till we get to the end
+			while (fgets(line, sizeof(line), ExternalFile) != NULL)
+			{
+			}
+			
+			if (line[0])
+			{
+				line[strcspn(line, "\n")] = '\0';
+				sprintf(ExternalFields, ",%s", line);
+			}
+			fseek(ExternalFile, 0, SEEK_END);
+			// clearerr(ExternalFile);
+		}
+	}	
+	
+	// Bouy mode or normal mode ?
+	if ((Config.BuoyModeAltitude > 0) && (GPS->Altitude < Config.BuoyModeAltitude))
+	{
+		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf",
+				Config.Channels[Channel].PayloadID,
+				Config.Channels[Channel].SentenceCounter,
+				TimeBuffer,
+				GPS->Latitude,
+				GPS->Longitude);
+	}
+	else
+	{
+		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
+				Config.Channels[Channel].PayloadID,
+				Config.Channels[Channel].SentenceCounter,
+				TimeBuffer,
+				GPS->Latitude,
+				GPS->Longitude,
+				GPS->Altitude,
+				(GPS->Speed * 13) / 7,
+				GPS->Direction,
+				GPS->Satellites,
+				GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
+				ExtraFields1,
+				ExtraFields2,
+				ExtraFields3,
+				ExtraFields4,
+				ExternalFields,
+				ExtraFields5,
+				ExtraFields6);
+	}
+	
+	AppendCRC((char *)TxLine);
+	
+	// Separate sentence for landing prediction ?
+	if (Config.PredictionID[0])
+	{
+		char PredictionPayload[64];
+		
+		sprintf(PredictionPayload,
+				"$$%s,%d,%s,%7.5lf,%7.5lf,%u",
+				Config.PredictionID,
+				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
+				TimeBuffer,
+				GPS->PredictedLatitude,
+				GPS->PredictedLongitude,
+				0);
+		AppendCRC((char *)PredictionPayload);
+		strcat((char *)TxLine, PredictionPayload);
+	}
+
+	return strlen((char *)TxLine) + 1;
 }

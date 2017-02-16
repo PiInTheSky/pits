@@ -224,3 +224,4 @@ void StartNewFileIfNeeded(int Channel);
 int prog_count(char* name);
 int GetBoardType(int *i2cChannel);
 int NoMoreSSDVPacketsToSend(int Channel);
+int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS);

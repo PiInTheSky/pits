@@ -27,8 +27,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <wiringPi.h>
-#include "misc.h"
 #include "gps.h"
+#include "misc.h"
 
 
 struct gps_info {
