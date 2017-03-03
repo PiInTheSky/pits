@@ -187,20 +187,23 @@ void LoadConfigFile(struct TConfig *Config)
 
 		Config->SSDVHigh = ReadInteger(fp, "high", -1, 0, 2000);
 		printf ("Image size changes at %dm\n", Config->SSDVHigh);
-		
-		Config->Channels[RTTY_CHANNEL].ImageWidthWhenLow = ReadInteger(fp, "low_width", -1, 0, 320);
-		Config->Channels[RTTY_CHANNEL].ImageHeightWhenLow = ReadInteger(fp, "low_height", -1, 0, 240);
-		printf ("RTTY Low image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenLow, Config->Channels[0].ImageHeightWhenLow);
-		
-		Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh = ReadInteger(fp, "high_width", -1, 0, 640);
-		Config->Channels[RTTY_CHANNEL].ImageHeightWhenHigh = ReadInteger(fp, "high_height", -1, 0, 480);
-		printf ("RTTY High image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh, Config->Channels[0].ImageHeightWhenHigh);
+	
+		if (!Config->DisableRTTY)
+		{
+			Config->Channels[RTTY_CHANNEL].ImageWidthWhenLow = ReadInteger(fp, "low_width", -1, 0, 320);
+			Config->Channels[RTTY_CHANNEL].ImageHeightWhenLow = ReadInteger(fp, "low_height", -1, 0, 240);
+			printf ("RTTY Low image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenLow, Config->Channels[0].ImageHeightWhenLow);
+			
+			Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh = ReadInteger(fp, "high_width", -1, 0, 640);
+			Config->Channels[RTTY_CHANNEL].ImageHeightWhenHigh = ReadInteger(fp, "high_height", -1, 0, 480);
+			printf ("RTTY High image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh, Config->Channels[0].ImageHeightWhenHigh);
 
-		Config->Channels[RTTY_CHANNEL].ImagePackets = ReadInteger(fp, "image_packets", -1, 0, 4);
-		printf ("RTTY: 1 Telemetry packet every %d image packets\n", Config->Channels[RTTY_CHANNEL].ImagePackets);
-		
-		Config->Channels[RTTY_CHANNEL].ImagePeriod = ReadInteger(fp, "image_period", -1, 0, 60);
-		printf ("RTTY: %d seconds between photographs\n", Config->Channels[RTTY_CHANNEL].ImagePeriod);
+			Config->Channels[RTTY_CHANNEL].ImagePackets = ReadInteger(fp, "image_packets", -1, 0, 4);
+			printf ("RTTY: 1 Telemetry packet every %d image packets\n", Config->Channels[RTTY_CHANNEL].ImagePackets);
+			
+			Config->Channels[RTTY_CHANNEL].ImagePeriod = ReadInteger(fp, "image_period", -1, 0, 60);
+			printf ("RTTY: %d seconds between photographs\n", Config->Channels[RTTY_CHANNEL].ImagePeriod);
+		}
 
 		// Set up full-size image parameters		
 		Config->Channels[FULL_CHANNEL].ImageWidthWhenLow = ReadInteger(fp, "full_low_width", -1, 0, 640);
@@ -621,7 +624,12 @@ int main(void)
 
 	if (Config.BoardType)
 	{
-		if (Config.BoardType == 3)
+		if (Config.BoardType == 4)
+		{
+			printf("RPi Zero W\n");
+			printf("PITS Zero Board\n");
+		}
+		else if (Config.BoardType == 3)
 		{
 			printf("RPi Zero\n");
 			printf("PITS Zero Board\n");
@@ -796,13 +804,16 @@ int main(void)
 		}
 	}
 	
-	if (pthread_create(&DS18B20Thread, NULL, DS18B20Loop, &GPS))
+	if ((Config.BoardType != 3) && (Config.BoardType != 4))
 	{
-		fprintf(stderr, "Error creating DS18B20s thread\n");
-		return 1;
+		if (pthread_create(&DS18B20Thread, NULL, DS18B20Loop, &GPS))
+		{
+			fprintf(stderr, "Error creating DS18B20s thread\n");
+			return 1;
+		}
 	}
 
-	if ((Config.BoardType != 3) && (!Config.DisableADC))
+	if ((Config.BoardType != 3) && (Config.BoardType != 4) && (!Config.DisableADC))
 	{
 		// Not a zero, so should have ADC on it
 		if (I2CADCExists())

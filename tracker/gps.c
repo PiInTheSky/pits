@@ -646,13 +646,20 @@ void *GPSLoop(void *some_void_ptr)
 	
 	Length = 0;
 	SentenceCount = 0;
+
+	if (*Config.GPSDevice)
+	{
+		printf("Serial GPS using %s\n", Config.GPSDevice);
+	}
+	else
+	{
+		printf ("I2C GPS using SDA = %d, SCL = %d\n", Config.SDA, Config.SCL);
+	}
 	
     while (1)
     {
 		unsigned char Character;
-
-		printf ("SDA/SCL = %d/%d\n", Config.SDA, Config.SCL);
-		
+	
 		if (OpenGPSPort(&bb, Config.GPSDevice, 0x42, Config.SDA, Config.SCL, 2000, 100))		// struct, i2c address, SDA, SCL, ns clock delay, timeout ms
 		{
 			printf("Failed to open GPS\n");

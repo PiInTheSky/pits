@@ -86,7 +86,12 @@ int GetBoardType(int *i2cChannel)
 						
 						printf ("RPi %s\n", line);
 						
-						if ((strcmp(ptr, "900092") == 0) ||
+						if (strcmp(ptr, "9000c1") == 0)
+						{
+							// Zero W
+							boardRev = 4;
+						}
+						else if ((strcmp(ptr, "900092") == 0) ||
 						    (strcmp(ptr, "900093") == 0) ||
 						    (strcmp(ptr, "920092") == 0) ||
 							(strcmp(ptr, "920093") == 0))
@@ -792,7 +797,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	ExtraFields6[0] = '\0';
 	
 	// Battery voltage and current, if available
-	if ((Config.BoardType == 3) || (Config.DisableADC))
+	if ((Config.BoardType == 3) || (Config.BoardType == 4) || (Config.DisableADC))
 	{
 			// Pi Zero - no ADC on the PITS Zero, or manually disabled ADC
 	}
