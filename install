@@ -1,0 +1,105 @@
+#!/bin/bash
+ function disable_bt {
+            echo "Detected Raspberry Pi 3...Disabling Bluetooth"
+            if grep -q pi3-disable-bt "/boot/config.txt"; then
+                echo 'Bluetooth Disabled'
+            else
+            echo 'dtoverlay=pi3-disable-bt' | sudo tee -a /boot/config.txt
+                echo 'Bluetooth Disabled'
+            fi
+            sudo systemctl disable hciuart
+           }
+
+
+echo "Pi in the Sky - Installation"
+echo "============================"
+sleep 2
+
+echo -e "\n\nInstalling git..."
+sleep 1
+
+echo -e "\n\nSetting up serial ports..."
+sleep 1
+sudo systemctl mask serial-getty@ttyAMA0.service
+sudo sed -e "s/console=serial0,115200//g" -i.backup /boot/cmdline.txt
+
+echo -e "\n\nEnabling OneWire support..."
+sleep 1
+sudo raspi-config nonint do_onewire 0 #Default
+
+rev=$(cat /proc/cpuinfo|grep Revision|awk -F: '$0=$2'|tr -d ' ' )
+
+case "$rev" in
+        a02082)
+            disable_bt
+            ;;
+        a22082)
+            disable_bt
+            ;;
+        *)
+            echo "No bluetooth to disable"
+            ;;
+esac
+
+read -rp $'\n\nDo you want to enable the camera? [Y,n]' choice 
+case $choice in  
+  n|N) ;;
+  *) sudo raspi-config nonint do_camera 0 ;; 
+esac
+
+read -rp $'\n\nAre you using Lora transmisssion? [Y,n]' choice 
+case $choice in  
+  n|N) ;;
+  *) sudo raspi-config nonint do_spi 0 ;; 
+esac
+
+read -rp $'\n\nEnable I2C? [Y,n]' choice
+case $choice in  
+  n|N) ;;
+  *) sudo raspi-config nonint do_i2c 0 ;; 
+esac
+
+read -rp $'\n\nAre you using a USB Webcam[y,N]' choice 
+case $choice in  
+  n|N) ;;
+  *) 
+      echo "Installing fswebcam"
+      echo "==================="
+      sleep 3
+      sudo apt-get install fswebcam ;; 
+esac
+
+
+echo -e "\n\nInstalling PiGPIO"
+echo "================="
+sleep 3
+
+cd
+wget abyz.co.uk/rpi/pigpio/pigpio.zip
+unzip pigpio.zip
+cd PIGPIO
+make
+sudo make install
+
+echo -e "\n\nInstalling Wiring Pi"
+echo "===================="
+sleep 3
+cd
+git clone git://git.drogon.net/wiringPi
+cd wiringPi
+./build
+
+echo -e "\n\nInstalling SSDV"
+echo "==============="
+sleep 3
+cd
+git clone https://github.com/fsphil/ssdv.git
+cd ssdv
+sudo make install
+
+echo -e "\n\nInstalling Pi in the Sky Software"
+echo "================================="
+
+cd
+cd pits
+./build
