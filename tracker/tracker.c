@@ -50,6 +50,7 @@
 #include "bme280.h"
 #include "aprs.h"
 #include "lora.h"
+#include "pipe.h"
 #include "prediction.h"
 #include "log.h"
 
@@ -160,7 +161,13 @@ void LoadConfigFile(struct TConfig *Config)
 	{
 		printf("BME280 Enabled\n");
 	}
-	
+
+	ReadString(fp, "pipe_payload", -1, Config->Channels[PIPE_CHANNEL].PayloadID, sizeof(Config->Channels[PIPE_CHANNEL].PayloadID), 0);
+	if (Config->Channels[PIPE_CHANNEL].PayloadID[0])
+	{
+		printf ("PIPE Payload ID = '%s'\n", Config->Channels[PIPE_CHANNEL].PayloadID);
+	}
+
 	Config->ExternalDS18B20 = ReadInteger(fp, "external_temperature", -1, 0, 1);
 	if (Config->ExternalDS18B20)
 	{
@@ -601,7 +608,7 @@ int main(void)
 	unsigned char Sentence[200];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread, PipeThread;
 	if (prog_count("tracker") > 1)
 	
 	{
@@ -884,6 +891,15 @@ int main(void)
 		if (pthread_create(&BME280Thread, NULL, BME280Loop, &GPS))
 		{
 			fprintf(stderr, "Error creating BME280 thread\n");
+			return 1;
+		}
+	}
+	
+	if (Config.Channels[PIPE_CHANNEL].PayloadID[0])
+	{
+		if (pthread_create(&PipeThread, NULL, PipeLoop, &GPS))
+		{
+			fprintf(stderr, "Error creating pipe thread\n");
 			return 1;
 		}
 	}

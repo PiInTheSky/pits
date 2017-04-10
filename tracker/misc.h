@@ -81,7 +81,9 @@ struct TRecentPacket
 // Structure for all possible radio devices
 // 0 is RTTY
 // 1 is APRS
-// 2/3 are for LoRa
+// 2 and 3 are for LoRa
+// 4 is a pretend channel for full-size images only
+// 5 is for piping data to an external program (e.g. for sending as SMS or directly connecting to habitat)
 struct TChannel
 {
 	int Enabled;
@@ -126,6 +128,7 @@ struct TChannel
 #define APRS_CHANNEL 1
 #define LORA_CHANNEL 2		// 2 for LoRa CE0 and 3 for LoRa CE1
 #define FULL_CHANNEL 4
+#define PIPE_CHANNEL 5
 
 struct TConfig
 {
@@ -152,7 +155,6 @@ struct TConfig
 	int EnableGPSLogging;
 	int EnableTelemetryLogging;
 	int TelemetryFileUpdate;		// Period in seconds
-	
 	
 	// LEDs
 	int LED_OK;
@@ -184,7 +186,7 @@ struct TConfig
 	struct TLoRaDevice LoRaDevices[2];
 
 	// Radio channels
-	struct TChannel Channels[5];		// 0 is RTTY, 1 is APRS, 2/3 are LoRa, 4 is for full-size images
+	struct TChannel Channels[6];		// 0 is RTTY, 1 is APRS, 2/3 are LoRa, 4 is for full-size images, 5 is for piping to external software
 	
 	// GPS
 	char GPSSource[128];
@@ -197,7 +199,7 @@ struct TConfig
 	float payload_weight;
 	char PredictionID[16];
 	
-	// External data file
+	// External data file (read into telemetry)
 	char ExternalDataFileName[100];
 };
 

@@ -646,7 +646,7 @@ void *GPSLoop(void *some_void_ptr)
 	
 	Length = 0;
 	SentenceCount = 0;
-
+	
 	if (*Config.GPSDevice)
 	{
 		printf("Serial GPS using %s\n", Config.GPSDevice);

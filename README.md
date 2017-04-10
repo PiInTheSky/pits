@@ -1,6 +1,6 @@
-PITS - Tracker software for the PITS board, for use in High Altitude Ballooning.
+# PITS - HAB Tracker software for the PITS boards #
 
-Created by Dave Akerman (dave@daveakerman.com)
+Created by Dave Akerman (dave@sccs.co.uk)
 
 This software is written for the PITS Zero with Pi Zero, PITS+ with the various A+/B+ models, and the original PITS with the Pi A/B boards.
 
@@ -8,14 +8,12 @@ PITS Zero and PITS+ can be purchased from board from http://ava.upuaut.net/store
 
 Software support is provided for customers who have purchased a PITS, PITS Zero or PITS+ board, for use with that board only.
 
-INSTALLING
-==========
+## Installation ##
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
 
-USB CAMERA
-==========
+## USB Camera ##
 
 To use a USB camera (i.e. a compact or SLR) instead of the Pi camera, you need to install gphoto2 and imagemagick:
 
@@ -43,8 +41,7 @@ Note that most settings are only available in the more basic modes - e.g. the ap
 gphoto2 needs more work than the other camera options, and we strongly recommend some experimentation with the camera you intend to use.  See http://gphoto.org/doc/manual/using-gphoto2.html.
 
 
-USB WEBCAM
-==========
+## USB Webcam ##
 
 To use a USB webcam instead of the Pi camera, you need to install fswebcam:
 
@@ -55,17 +52,25 @@ and you need to edit /boot/pisky.txt and change the "camera" line to be:
 	Camera=U
 
 
-IMAGE PROCESSING
-================
+## IMAGE PROCESSING ##
 
-All images now include telemetry (longitude, latitude, altitude) in the JPEG comment field, but only if EXIV2 has been installed.
+All images now include telemetry (longitude, latitude, altitude) in the JPEG comment field, **but only if EXIV2 has been installed**.
 
-It is therefore possible to overlay downloaded images with telemetry data, as text or graphics, using (for example) ImageMagick, and EXIV2 to extract the data from the JPEG being processed.  A sample script is provided.  The software will automatically execute a script called "process_image" if present.
+It is therefore possible to overlay downloaded images with telemetry data, as text or graphics, using (for example) ImageMagick, and EXIV2 to extract the data from the JPEG being processed.  A sample script "process_image.sample" is provided; to use this, rename to be "process_image", make it executable, and edit to your requirements.  Please note that the sample assumes a particular image resolution and you will need to change the pixel positions of the various items.  Imagemagick is quite complex to use but there is plenty of documentation on the web plus many samples. 
 
 
-CHANGE LOG
+## Change Log ##
+
+10/04/2017
 ==========
 
+- Added support direct upload to Habitat using an internet connection 
+ 
+03/03/2017
+==========
+
+- Added support for Pi Zero W 
+ 
 07/11/2016
 ==========
 
