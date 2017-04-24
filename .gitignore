@@ -8,6 +8,8 @@ tracker/ssdv_done_*
 tracker/coonvert_*
 tracker/tweets.log
 tracker/webstuff.py
+tracker/batc
+tracker/youtube
 *.jpg
 *.JPG
 *.sms
