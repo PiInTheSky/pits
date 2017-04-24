@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "pipe.h"
 #include "gps.h"
@@ -23,30 +24,44 @@ void *PipeLoop(void *some_void_ptr)
 {
 	struct TGPS *GPS;
     int fd;
-    char *fifo = "pits_pipe";
+    char *fifo="pits_pipe";
 	unsigned char Sentence[200];
+	char Message[300];
 
 	GPS = (struct TGPS *)some_void_ptr;
 
-
     // create the FIFO (named pipe)
-    mkfifo(fifo, 0666);
-    fd = open(fifo, O_WRONLY);
+	mkfifo(fifo, 0666);
 
 	while (1)
 	{
-		// Create sentence
-		
-		BuildSentence(Sentence, PIPE_CHANNEL, GPS);
-
-		LogMessage("PIPE: %.70s", Sentence);
-
-		write(fd, (char *)Sentence, strlen((char *)Sentence));
-
-		sleep(10);
+		// Create and send sentence	etc
+		if (GPS->Satellites > 3)
+		{
+			BuildSentence(Sentence, PIPE_CHANNEL, GPS);
+			
+			sprintf(Message, "%sALT=%5.5" PRId32 "\nLAT=%.5lf\nLON=%.5lf\n", Sentence, GPS->Altitude, GPS->Latitude, GPS->Longitude);
+				
+			LogMessage("PIPE STUFF ................");
+			fd = open(fifo, O_WRONLY);
+			if (fd >= 0)
+			{
+				LogMessage("PIPE: %.70s", Sentence);
+				write(fd, Message, strlen(Message));
+				close(fd);
+			}
+			else
+			{
+				LogMessage("PIPE Closed");
+			}
+			sleep(10);
+		}
+		else
+		{
+			sleep(1);
+		}
 	}
 
-    // close(fd);
     // unlink(fifo);
 	
 	return 0;

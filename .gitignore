@@ -7,7 +7,9 @@ tracker/keep
 tracker/ssdv_done_*
 tracker/coonvert_*
 tracker/tweets.log
+tracker/webstuff.py
 *.jpg
+*.JPG
 *.sms
 *.old
 telemetry.txt

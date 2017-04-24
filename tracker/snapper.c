@@ -157,8 +157,8 @@ void GetWidthAndHeightForChannel(struct TGPS *GPS, int Channel, int *width, int 
 		*height = Config.Channels[Channel].ImageHeightWhenLow;
 	}
 	
-	if (*width < 320) *width = 320;
-	if (*height < 240) *height = 240;					
+	// if (*width < 320) *width = 320;
+	// if (*height < 240) *height = 240;					
 
 	// SSDV requires dimensions to be multiples of 16 pixels
 	*width = (*width / 16) * 16;
@@ -196,96 +196,99 @@ void *CameraLoop(void *some_void_ptr)
 					Config.Channels[Channel].TimeSinceLastImage = 0;
 					
 					GetWidthAndHeightForChannel(GPS, Channel, &width, &height);
-										
-					// Create name of file
-					sprintf(filename, "/home/pi/pits/tracker/take_pic_%d", Channel);
 					
-					// Leave it alone if it exists (this means that the photo has not been taken yet)
-					if (access(filename, F_OK ) == -1)
-					{				
-						// Doesn't exist, so create it.  Script will run it next time it checks
-						if ((fp = fopen(filename, "wt")) != NULL)
-						{
-							char FileName[256];
-							int Mode;
-							
-							if (Channel == 4)
+					if ((width > 0) && (height > 0))
+					{
+						// Create name of file
+						sprintf(filename, "/home/pi/pits/tracker/take_pic_%d", Channel);
+						
+						// Leave it alone if it exists (this means that the photo has not been taken yet)
+						if (access(filename, F_OK ) == -1)
+						{				
+							// Doesn't exist, so create it.  Script will run it next time it checks
+							if ((fp = fopen(filename, "wt")) != NULL)
 							{
-								// Full size images are saved in dated folder names
-								fprintf(fp, "mkdir -p %s/$2\n", Config.Channels[Channel].SSDVFolder);
-
-								sprintf(FileName, "%s/$2/$1.jpg", Config.Channels[Channel].SSDVFolder);				
-
-								if (Config.Camera == 3)
+								char FileName[256];
+								int Mode;
+								
+								if (Channel == 4)
 								{
-									if (access("take_photo",  X_OK) == 0)
+									// Full size images are saved in dated folder names
+									fprintf(fp, "mkdir -p %s/$2\n", Config.Channels[Channel].SSDVFolder);
+
+									sprintf(FileName, "%s/$2/$1.jpg", Config.Channels[Channel].SSDVFolder);				
+
+									if (Config.Camera == 3)
 									{
-										fprintf(fp, "./take_photo %s\n", FileName);
+										if (access("take_photo",  X_OK) == 0)
+										{
+											fprintf(fp, "./take_photo %s\n", FileName);
+										}
+										else
+										{
+											fprintf(fp, "gphoto2 --capture-image-and-download --force-overwrite --filename %s\n", FileName);
+										}
+									}
+									else if (Config.Camera == 2)
+									{
+										fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
 									}
 									else
 									{
-										fprintf(fp, "gphoto2 --capture-image-and-download --force-overwrite --filename %s\n", FileName);
+										fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
 									}
 								}
-								else if (Config.Camera == 2)
-								{
-									fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
-								}
 								else
 								{
-									fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
-								}
-							}
-							else
-							{
-								sprintf(FileName, "%s/$1.jpg", Config.Channels[Channel].SSDVFolder);
+									sprintf(FileName, "%s/$1.jpg", Config.Channels[Channel].SSDVFolder);
 
-								if (Config.Camera == 3)
-								{
-									// For gphoto2 we do full-res now and resize later
-									fprintf(fp, "gphoto2 --capture-image-and-download --force-overwrite --filename %s\n", FileName);
+									if (Config.Camera == 3)
+									{
+										// For gphoto2 we do full-res now and resize later
+										fprintf(fp, "gphoto2 --capture-image-and-download --force-overwrite --filename %s\n", FileName);
+									}
+									else if (Config.Camera == 2)
+									{
+										fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
+									}
+									else
+									{
+										fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
+									}
 								}
-								else if (Config.Camera == 2)
+								
+								// Add telemetry as comment in JPEG file
+								// Alt=34156;Lat=51.4321;Long=-2.4321;UTC=10:11:12;Ascent=5.1;Mode=1
+								if (GPS->AscentRate >= 2)
 								{
-									fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
+									Mode = 1;
+								}
+								else if (GPS->AscentRate <= -2)
+								{
+									Mode = 2;
+								}
+								else if (GPS->Altitude >= Config.SSDVHigh)
+								{
+									Mode = 1;
 								}
 								else
 								{
-									fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
+									Mode = 0;
 								}
+								fprintf(fp, "exiv2 -c'Alt=%" PRId32 ";MaxAlt=%" PRId32 ";Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
+													GPS->Altitude,
+													GPS->MaximumAltitude,
+													GPS->Latitude,
+													GPS->Longitude,
+													GPS->Hours, GPS->Minutes, GPS->Seconds,
+													GPS->AscentRate,
+													Mode,
+													FileName);
+		
+								fclose(fp);
+								chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
+								Config.Channels[Channel].ImagesRequested++;
 							}
-							
-							// Add telemetry as comment in JPEG file
-							// Alt=34156;Lat=51.4321;Long=-2.4321;UTC=10:11:12;Ascent=5.1;Mode=1
-							if (GPS->AscentRate >= 2)
-							{
-								Mode = 1;
-							}
-							else if (GPS->AscentRate <= -2)
-							{
-								Mode = 2;
-							}
-							else if (GPS->Altitude >= Config.SSDVHigh)
-							{
-								Mode = 1;
-							}
-							else
-							{
-								Mode = 0;
-							}
-							fprintf(fp, "exiv2 -c'Alt=%" PRId32 ";MaxAlt=%" PRId32 ";Lat=%7.5lf;Long=%7.5lf;UTC=%02d:%02d:%02d;Ascent=%.1lf;Mode=%d' %s\n",
-												GPS->Altitude,
-												GPS->MaximumAltitude,
-												GPS->Latitude,
-												GPS->Longitude,
-												GPS->Hours, GPS->Minutes, GPS->Seconds,
-												GPS->AscentRate,
-												Mode,
-												FileName);
-    
-							fclose(fp);
-							chmod(filename, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
-							Config.Channels[Channel].ImagesRequested++;
 						}
 					}
 				}

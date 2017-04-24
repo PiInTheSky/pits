@@ -14,7 +14,7 @@ def UploadTelemetry(Callsign, Sentence):
 	
 	data = {"type": "payload_telemetry", "data": {"_raw": sentence_b64.decode()}, "receivers": {Callsign: {"time_created": date, "time_uploaded": date,},},}
 	data = json.dumps(data)
-	
+
 	url = "http://habitat.habhub.org/habitat/_design/payload_telemetry/_update/add_listener/%s" % sha256(sentence_b64).hexdigest()
 	req = urllib.request.Request(url)
 	req.add_header('Content-Type', 'application/json')
@@ -26,7 +26,7 @@ def UploadTelemetry(Callsign, Sentence):
 
 pipe_name = 'pits_pipe'
 
-print ("Waiting for pipe to be created ...")
+print ("Waiting for telemetry pipe to be created ...")
 
 while not os.path.exists(pipe_name):
 	time.sleep(1)
@@ -38,6 +38,7 @@ while True:
 	line = pipein.readline()
 	if line:
 		print ('Received: "%s"' % (line[:-1]))
-		UploadTelemetry('3G', line)
+		if line[0] == '$':
+			UploadTelemetry('3G', line)
 	else:
 		time.sleep(1)

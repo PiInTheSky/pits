@@ -9,6 +9,7 @@ echo 1 | sudo tee /sys/class/leds/led0/brightness
 sudo ./camera &
 #python3 sensors.py &
 #python3 astro_led.py &
+#python3 webstuff.py
 while :
 do
 	sudo ./tracker

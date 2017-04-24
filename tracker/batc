@@ -1,0 +1,1 @@
+raspivid -n -w 720 -h 405 -fps 25 -t 1000000 -b 2000000 -ih -o - | ffmpeg -i - -vcodec copy -an -f flv rtmp://batc.tv/live/h53d96/h53d96

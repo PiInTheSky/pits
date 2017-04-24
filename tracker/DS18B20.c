@@ -60,10 +60,10 @@ void *DS18B20Loop(void *some_void_ptr)
 							
 							fclose(fp);
 						}
-						else
-						{
-							printf("COULD NOT OPEN DS18B20 FILE\n");
-						}
+//						else
+//						{
+//							printf("COULD NOT OPEN DS18B20 FILE\n");
+//						}
 					}
 				}
 			}

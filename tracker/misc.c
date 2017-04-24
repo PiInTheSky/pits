@@ -740,6 +740,7 @@ int prog_count(char* name)
 
 void LogMessage(const char *format, ...)
 {
+	#define MAX_LEN 180
 	char Buffer[200];
 	
     va_list args;
@@ -749,11 +750,11 @@ void LogMessage(const char *format, ...)
 
     va_end(args);
 
-	if (strlen(Buffer) > 79)
+	if (strlen(Buffer) > MAX_LEN)
 	{
-		Buffer[77] = '.';
-		Buffer[78] = '.';
-		Buffer[79] = 0;
+		Buffer[MAX_LEN-2] = '.';
+		Buffer[MAX_LEN-1] = '.';
+		Buffer[MAX_LEN] = 0;
 	}
 
 	if (Buffer[strlen(Buffer)-1] == '\n')
@@ -938,7 +939,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 		sprintf(PredictionPayload,
 				"$$%s,%d,%s,%7.5lf,%7.5lf,%u",
 				Config.PredictionID,
-				Config.Channels[LORA_CHANNEL+LoRaChannel].SentenceCounter,
+				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,
 				GPS->PredictedLatitude,
 				GPS->PredictedLongitude,
