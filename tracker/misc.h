@@ -139,6 +139,7 @@ struct TConfig
 	int i2cChannel;
 	int DisableADC;
 	int32_t BuoyModeAltitude;
+	double MaxADCVoltage;
 	
 	// Camera
 	int Camera;	

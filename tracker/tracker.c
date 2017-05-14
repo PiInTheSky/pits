@@ -173,6 +173,8 @@ void LoadConfigFile(struct TConfig *Config)
 	{
 		printf("External DS18B20 Enabled\n");
 	}
+	
+	Config->MaxADCVoltage = ReadFloat(fp, "adc_vmax", -1, 0, 15);
 
 	Config->Camera = ReadCameraType(fp, "camera");
 	printf ("Camera (%s) %s\n", CameraTypes[Config->Camera], Config->Camera ? "Enabled" : "Disabled");

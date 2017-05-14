@@ -11,6 +11,7 @@ high_height=480
 image_packets=4
 enable_bmp085=N
 external_temperature=1
+adc_vmax=15
 logging=GPS,Telemetry
 Disable_RTTY=N
 info_messages=2
