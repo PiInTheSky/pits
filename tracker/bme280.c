@@ -11,7 +11,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <errno.h>
-#include <wiringPiSPI.h>
+#include <wiringPiI2C.h>
 #include <inttypes.h>
 
 #include "gps.h"
@@ -82,7 +82,7 @@ struct TBME
 	double RawTempFine;
 };
 
-int bme280Calibration(struct TBME *bme);
+void bme280Calibration(struct TBME *bme);
 int bme280ReadInt(struct TBME *bme, unsigned char address);
 // double bme280ReadUP(short fd);
 int BMEAddress;
@@ -98,7 +98,12 @@ int BMEPresent(struct TBME *bme, int Address)
 	
 	if ((bme->fd = open_i2c(Address)) >= 0)
 	{
-		IsPresent = bme280Calibration(bme);
+		if (wiringPiI2CRead(bme->fd) != -1)
+		{
+			// Device present
+			IsPresent = 1;
+			bme280Calibration(bme);
+		}
 		
 		close(bme->fd);
 	}
@@ -115,7 +120,7 @@ void bme280WriteRegister(struct TBME *bme, int Register, int Value)
 	
 	if ((write(bme->fd, buf, 2)) != 2)
 	{
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 	}
 }
 
@@ -127,13 +132,13 @@ uint16_t bme280ReadUInt16(struct TBME *bme, int Register)
 	
 	if ((write(bme->fd, buf, 1)) != 1)
 	{
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 		return 0;
 	}
 	
 	if (read(bme->fd, buf, 2) != 2)
 	{
-		printf("Unable to read from slave\n");
+		printf("Unable to read from BME280\n");
 		return 0;
 	}
 	
@@ -148,13 +153,13 @@ uint8_t bme280ReadUInt8(struct TBME *bme, int Register)
 	
 	if ((write(bme->fd, buf, 1)) != 1)
 	{
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 		return 0;
 	}
 	
 	if (read(bme->fd, buf, 1) != 1)
 	{
-		printf("Unable to read from slave\n");
+		printf("Unable to read from BME280\n");
 		return 0;
 	}
 	
@@ -169,13 +174,13 @@ int8_t bme280ReadInt8(struct TBME *bme, int Register)
 	
 	if ((write(bme->fd, buf, 1)) != 1)
 	{
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 		return 0;
 	}
 	
 	if (read(bme->fd, buf, 1) != 1)
 	{
-		printf("Unable to read from slave\n");
+		printf("Unable to read from BME280\n");
 		return 0;
 	}
 	
@@ -190,20 +195,20 @@ int16_t bme280ReadInt16(struct TBME *bme, int Register)
 	
 	if ((write(bme->fd, buf, 1)) != 1)
 	{
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 		return 0;
 	}
 	
 	if (read(bme->fd, buf, 2) != 2)
 	{
-		printf("Unable to read from slave\n");
+		printf("Unable to read from BME280\n");
 		return 0;
 	}
 
 	return (int16_t)buf[1]<<8 | (int16_t)buf[0];
 }
 
-int bme280Calibration(struct TBME *bme)
+void bme280Calibration(struct TBME *bme)
 {
     bme->T1 = bme280ReadUInt16(bme, BME280_REGISTER_DIG_T1);
 	bme->T2 = bme280ReadInt16(bme, BME280_REGISTER_DIG_T2);
@@ -244,7 +249,7 @@ int bme280Calibration(struct TBME *bme)
     bme->H6 = bme280ReadInt8(bme, BME280_REGISTER_DIG_H7);
 	printf("H6 = %d\n", bme->H6);
 
-	return 1;
+
 }
 
 void bme280StartMeasurement(struct TBME *bme)
@@ -265,13 +270,13 @@ void bme280ReadDataRegisters(struct TBME *bme)
 
 	if ((write(bme->fd, buf, 1)) != 1)								// Send register we want to read from	
 	{
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 		return;
 	}
 	
 	if (read(bme->fd, bme->Registers, 8) != 8)
 	{
-		printf("Unable to read from slave\n");
+		printf("Unable to read from BME280\n");
 		return;
 	}
 	
@@ -383,12 +388,12 @@ int bme280ReadInt(struct TBME *bme, unsigned char address)
 	buf[0] = address;
 
 	if ((write(bme->fd, buf, 1)) != 1) {								// Send register we want to read from	
-		printf("Error writing to i2c slave\n");
+		printf("Error writing to BME280\n");
 		return -1;
 	}
 	
 	if (read(bme->fd, buf, 2) != 2) {								// Read back data into buf[]
-		printf("Unable to read from slave\n");
+		printf("Unable to read from BME280\n");
 		return -1;
 	}
 
