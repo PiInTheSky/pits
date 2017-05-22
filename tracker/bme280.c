@@ -233,23 +233,21 @@ void bme280Calibration(struct TBME *bme)
     bme->H4 = bme280ReadInt8(bme, BME280_REGISTER_DIG_H4);
 	bme->H4 *= 16;	// <<= 4;
     bme->H4 |= (bme280ReadUInt8(bme, BME280_REGISTER_DIG_H5) & 0x0F);
-	printf("Registers %d %u, Value %d\n",
-			bme280ReadInt8(bme, BME280_REGISTER_DIG_H4),
-			bme280ReadUInt8(bme, BME280_REGISTER_DIG_H5),
-			bme->H4);
+	// printf("Registers %d %u, Value %d\n",
+			// bme280ReadInt8(bme, BME280_REGISTER_DIG_H4),
+			// bme280ReadUInt8(bme, BME280_REGISTER_DIG_H5),
+			// bme->H4);
 	
     bme->H5 = bme280ReadInt8(bme, BME280_REGISTER_DIG_H6);
 	bme->H5 *= 16;	// <<= 4;
     bme->H5 |= (bme280ReadUInt8(bme, BME280_REGISTER_DIG_H5) >> 4);
-	printf("Registers %d %u, Value %d\n",
-			bme280ReadInt8(bme, BME280_REGISTER_DIG_H6),
-			bme280ReadUInt8(bme, BME280_REGISTER_DIG_H5),
-			bme->H5);
+	// printf("Registers %d %u, Value %d\n",
+			// bme280ReadInt8(bme, BME280_REGISTER_DIG_H6),
+			// bme280ReadUInt8(bme, BME280_REGISTER_DIG_H5),
+			// bme->H5);
 
     bme->H6 = bme280ReadInt8(bme, BME280_REGISTER_DIG_H7);
-	printf("H6 = %d\n", bme->H6);
-
-
+	// printf("H6 = %d\n", bme->H6);
 }
 
 void bme280StartMeasurement(struct TBME *bme)

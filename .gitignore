@@ -10,7 +10,8 @@ tracker/tweets.log
 tracker/webstuff.py
 tracker/batc
 tracker/youtube
-tracker/extras
+tracker/ex_*
+*.NMEA
 *.jpg
 *.JPG
 *.sms

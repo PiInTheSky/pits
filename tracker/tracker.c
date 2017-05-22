@@ -54,7 +54,7 @@
 #include "prediction.h"
 #include "log.h"
 #ifdef EXTRAS_PRESENT
-#	include "extras/extras.h"
+#	include "ex_tracker.h"
 #endif	
 
 struct TConfig Config;
@@ -70,6 +70,9 @@ int Records, FileNumber;
 struct termios options;
 char *SSDVFolder="/home/pi/pits/tracker/images";
  
+
+
+
 
 speed_t BaudToSpeed(int baud)
 {
@@ -251,6 +254,9 @@ void LoadConfigFile(struct TConfig *Config)
 		ReadString(fp, "prediction_id", -1, Config->PredictionID, sizeof(Config->PredictionID), 0);
 	}
 	
+#	ifdef EXTRAS_PRESENT
+		tracker_load_config(fp, Config);
+#	endif
 	// External data file
 	Config->ExternalDataFileName[0] = '\0';
 	ReadString(fp, "external_data", -1, Config->ExternalDataFileName, sizeof(Config->ExternalDataFileName), 0);
@@ -917,6 +923,9 @@ int main(void)
 		}
 	}	
 	
+#	ifdef EXTRAS_PRESENT
+		tracker_load_threads();
+#	endif
 	if (!Config.DisableRTTY && (fd >= 0))
 	{
 		if (Config.InfoMessageCount < 0)

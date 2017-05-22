@@ -496,7 +496,7 @@ time_t day_seconds()
     return t1 - t2;
 }
 
-void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
+void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count, int ActionMask)
 {
 	static int SystemTimeHasBeenSet=0;
 	
@@ -517,30 +517,70 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count)
 				if (satellites >= 4)
 				{
 					unsigned long utc_seconds;
-					utc_seconds = utc_time;
-					GPS->Hours = utc_seconds / 10000;
-					GPS->Minutes = (utc_seconds / 100) % 100;
-					GPS->Seconds = utc_seconds % 100;
-					GPS->SecondsInDay = GPS->Hours * 3600 + GPS->Minutes * 60 + GPS->Seconds;					
-					// printf("\nGGA: %ld seconds offset\n\n", GPS->SecondsInDay - day_seconds());
-					GPS->Latitude = FixPosition(latitude);
-					if (ns == 'S') GPS->Latitude = -GPS->Latitude;
-					GPS->Longitude = FixPosition(longitude);
-					if (ew == 'W') GPS->Longitude = -GPS->Longitude;
 					
-					if (GPS->Altitude <= 0)
+					if (ActionMask & 1)
 					{
-						GPS->AscentRate = 0;
+						utc_seconds = utc_time;
+						GPS->Hours = utc_seconds / 10000;
+						GPS->Minutes = (utc_seconds / 100) % 100;
+						GPS->Seconds = utc_seconds % 100;
+						GPS->SecondsInDay = GPS->Hours * 3600 + GPS->Minutes * 60 + GPS->Seconds;					
+						// printf("\nGGA: %ld seconds offset\n\n", GPS->SecondsInDay - day_seconds());
 					}
-					else
+					
+					if (ActionMask & 2)
 					{
-						GPS->AscentRate = GPS->AscentRate * 0.7 + ((int32_t)altitude - GPS->Altitude) * 0.3;
+						GPS->Latitude = FixPosition(latitude);
+						if (ns == 'S') GPS->Latitude = -GPS->Latitude;
+						GPS->Longitude = FixPosition(longitude);
+						if (ew == 'W') GPS->Longitude = -GPS->Longitude;
+						
+						if (GPS->Altitude <= 0)
+						{
+							GPS->AscentRate = 0;
+						}
+						else
+						{
+							GPS->AscentRate = GPS->AscentRate * 0.7 + ((int32_t)altitude - GPS->Altitude) * 0.3;
+						}
+						// printf("Altitude=%ld, AscentRate = %.1lf\n", GPS->Altitude, GPS->AscentRate);
+						GPS->Altitude = altitude;
+						if (GPS->Altitude > GPS->MaximumAltitude)
+						{
+							GPS->MaximumAltitude = GPS->Altitude;
+						}
+						if ((GPS->Altitude < GPS->MinimumAltitude) || (GPS->MinimumAltitude == 0))
+						{
+							GPS->MinimumAltitude = GPS->Altitude;						
+						}
+
+						// Launched?
+						if ((GPS->AscentRate >= 1.0) && (GPS->Altitude > (GPS->MinimumAltitude+50)) && (GPS->FlightMode == fmIdle))
+						{
+							GPS->FlightMode = fmLaunched;
+						}
+
+						// Burst?
+						if ((GPS->AscentRate < -3.0) && (GPS->Altitude < (GPS->MaximumAltitude+50)) && (GPS->MaximumAltitude >= (GPS->MinimumAltitude+2000)) && (GPS->FlightMode <= fmLaunched))
+						{
+							GPS->FlightMode = fmBurst;
+						}
+						
+						// Landed?
+						if ((GPS->AscentRate >= -0.1) && (GPS->Altitude <= 2000) && (GPS->FlightMode >= fmBurst) && (GPS->FlightMode < fmLanded))
+						{
+							GPS->FlightMode = fmLanded;
+						}
+
+#						ifdef EXTRAS_PRESENT
+							gps_postprocess_position(GPS, ActionMask);
+#						endif					
 					}
-					// printf("Altitude=%ld, AscentRate = %.1lf\n", GPS->Altitude, GPS->AscentRate);
-					GPS->Altitude = altitude;
-					if (GPS->Altitude > GPS->MaximumAltitude) GPS->MaximumAltitude = GPS->Altitude;
 				}
-				GPS->Satellites = satellites;
+				if (ActionMask & 2)
+				{
+					GPS->Satellites = satellites;
+				}
 			}
 			if (Config.EnableGPSLogging)
 			{
@@ -640,14 +680,25 @@ void *GPSLoop(void *some_void_ptr)
 	int Length;
 	struct gps_info bb;
 	struct TGPS *GPS;
+	FILE *fp;
 	int SentenceCount;
 	
 	GPS = (struct TGPS *)some_void_ptr;
 	
+	fp = NULL;
+	if (Config.GPSSource[0])
+	{
+		fp = fopen(Config.GPSSource, "rt");
+	}
+	
 	Length = 0;
 	SentenceCount = 0;
 	
-	if (*Config.GPSDevice)
+	if (fp != NULL)
+	{
+		printf("NMEA File GPS using %s\n", Config.GPSSource);
+	}
+	else if (*Config.GPSDevice)
 	{
 		printf("Serial GPS using %s\n", Config.GPSDevice);
 	}
@@ -691,25 +742,47 @@ void *GPSLoop(void *some_void_ptr)
                	{
                		Line[Length] = '\0';
 					// puts(Line);
-               		ProcessLine(&bb, GPS, Line, Length);
 					
-					if (++SentenceCount > 100) SentenceCount = 0;
-					
-					if ((SentenceCount == 10) && Config.Power_Saving)
+					if ((fp != NULL) && (strstr(Line, "GGA") != NULL))
 					{
-						setGPS_GNSS(&bb);
-					}					
-					else if ((SentenceCount == 20) && Config.Power_Saving)
-					{
-						setGPS_DynamicModel6(&bb);
+
+						char Buffer[100];
+						
+						// Get time only from GPS, then get position from NMEA file
+						if (fgets(Buffer, sizeof Buffer, fp) == NULL)
+						{
+							fclose(fp);
+							// fp = NULL;
+							exit(1);
+						}
+						else
+						{
+							ProcessLine(NULL, GPS, Line, Length, 1);
+							ProcessLine(NULL, GPS, Buffer, strlen(Buffer)-1, 2);
+						}
 					}
-					else if (SentenceCount == 30)
-					{
-						SetPowerMode(&bb, Config.Power_Saving && (GPS->Satellites > 4));
-					}
-					else if (SentenceCount == 40)
-					{
-						SetFlightMode(&bb);
+					else
+					{				
+						ProcessLine(&bb, GPS, Line, Length, 3);
+						
+						if (++SentenceCount > 100) SentenceCount = 0;
+						
+						if ((SentenceCount == 10) && Config.Power_Saving)
+						{
+							setGPS_GNSS(&bb);
+						}					
+						else if ((SentenceCount == 20) && Config.Power_Saving)
+						{
+							setGPS_DynamicModel6(&bb);
+						}
+						else if (SentenceCount == 30)
+						{
+							SetPowerMode(&bb, Config.Power_Saving && (GPS->Satellites > 4));
+						}
+						else if (SentenceCount == 40)
+						{
+							SetFlightMode(&bb);
+						}
 					}
 
                		Length = 0;

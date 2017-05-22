@@ -62,6 +62,10 @@ struct TLoRaDevice
 	int LastPacketRSSI;
 	int LastPacketSNR;
 	int PacketCount;
+	
+#	ifdef EXTRAS_PRESENT
+#		include "ex_misc_lora.h"
+#	endif		
 };
 
 struct TSSDVPackets
@@ -151,6 +155,7 @@ struct TConfig
 	int EnableBMP085;
 	int EnableBME280;
 	int ExternalDS18B20;
+	int EnableMPU9250;
 	
 	// Logging
 	int EnableGPSLogging;
@@ -202,6 +207,10 @@ struct TConfig
 	
 	// External data file (read into telemetry)
 	char ExternalDataFileName[100];
+	
+#	ifdef EXTRAS_PRESENT
+#		include "ex_misc_config.h"
+#	endif		
 };
 
 extern struct TConfig Config;

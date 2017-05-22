@@ -23,6 +23,10 @@
 
 #include "gps.h"
 #include "misc.h"
+#ifdef EXTRAS_PRESENT
+#	include "ex_misc.h"
+#endif	
+
 
 #define MAX_RECENT 10
 struct TRecentPacket RecentPackets[4][MAX_RECENT];
@@ -778,7 +782,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	static FILE *ExternalFile=NULL;
 	static int FirstTime=1;
 	int LoRaChannel;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[32], ExtraFields5[32], ExtraFields6[32];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7;
 	
 	if (FirstTime)
 	{
@@ -796,6 +800,8 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	ExtraFields4[0] = '\0';
 	ExtraFields5[0] = '\0';
 	ExtraFields6[0] = '\0';
+	
+	ExtraFields7 = "";
 	
 	// Battery voltage and current, if available
 	if ((Config.BoardType == 3) || (Config.BoardType == 4) || (Config.DisableADC))
@@ -834,7 +840,12 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	// Landing Prediction, if enabled
 	if (Config.EnableLandingPrediction && (Config.PredictionID[0] == '\0'))
 	{	
-		sprintf(ExtraFields4, ",%7.5lf,%7.5lf", GPS->PredictedLatitude, GPS->PredictedLongitude);
+		// sprintf(ExtraFields4, ",%7.5lf,%7.5lf", GPS->PredictedLatitude, GPS->PredictedLongitude);
+		sprintf(ExtraFields4, ",%.2lf,%7.5lf,%7.5lf,%3.1lf,%d", GPS->CDA,
+																GPS->PredictedLatitude,
+																GPS->PredictedLongitude,
+																GPS->PredictedLandingSpeed,
+																GPS->TimeTillLanding);
 	}
 	
 	// Specific to LoRa Uplink
@@ -909,7 +920,11 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	}
 	else
 	{
-		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s",
+		#ifdef EXTRAS_PRESENT
+			ExtraFields7 = misc_get_sentence_fields(GPS);
+		#endif
+		
+		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s%s",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,
@@ -926,7 +941,8 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 				ExtraFields4,
 				ExternalFields,
 				ExtraFields5,
-				ExtraFields6);
+				ExtraFields6,
+				ExtraFields7);
 	}
 	
 	AppendCRC((char *)TxLine);
