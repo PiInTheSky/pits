@@ -53,6 +53,9 @@
 #include "pipe.h"
 #include "prediction.h"
 #include "log.h"
+#ifdef EXTRAS_PRESENT
+#	include "extras/extras.h"
+#endif	
 
 struct TConfig Config;
 
