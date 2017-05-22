@@ -24,6 +24,9 @@
 #include "led.h"
 #include "bmp085.h"
 #include "lora.h"
+#ifdef EXTRAS_PRESENT
+#	include "ex_lora.h"
+#endif	
 
 // RFM98
 uint8_t currentMode = 0x81;
@@ -57,7 +60,8 @@ struct TLoRaMode
 	{EXPLICIT_MODE, ERROR_CODING_4_6, BANDWIDTH_250K, SPREADING_7,  0,  8000, "Turbo"},				// 3: Normal mode for high speed images in 868MHz band
 	{IMPLICIT_MODE, ERROR_CODING_4_5, BANDWIDTH_250K, SPREADING_6,  0, 16828, "TurboX"},			// Fastest mode within IR2030 in 868MHz band
 	{EXPLICIT_MODE, ERROR_CODING_4_8, BANDWIDTH_41K7, SPREADING_11, 0,   200, "Calling"},			// Calling mode
-	{IMPLICIT_MODE, ERROR_CODING_4_5, BANDWIDTH_41K7, SPREADING_6,  0,  2800, "Uplink"}				// Uplink mode for 868
+	{IMPLICIT_MODE, ERROR_CODING_4_5, BANDWIDTH_41K7, SPREADING_6,  0,  2800, "Uplink"},				// Uplink mode for 868
+	{EXPLICIT_MODE, ERROR_CODING_4_5, BANDWIDTH_20K8, SPREADING_7,  0,  2800, "Telnet"}				// 7: Telnet-style comms with HAB on 434
 };
 
 int Records, FileNumber;
@@ -251,6 +255,7 @@ int BuildLoRaCall(unsigned char *TxLine, int LoRaChannel)
 }
 
 
+
 int BuildLoRaPositionPacket(unsigned char *TxLine, int LoRaChannel, struct TGPS *GPS)
 {
 	int OurID;
@@ -369,6 +374,12 @@ int UplinkTimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 	
 int TimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 {
+	if (Config.LoRaDevices[LoRaChannel].ListenOnly)
+	{
+		// Listen until spoken to, with timeout
+		return 0;
+	}
+
 	if (Config.LoRaDevices[LoRaChannel].CycleTime > 0)
 	{
 		// TDM
@@ -403,6 +414,22 @@ void startReceiving(int LoRaChannel)
 	}
 }
 
+double BandwidthInKHz(Channel)
+{
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_7K8) return 7.8;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_10K4) return 10.4;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_15K6) return 15.6;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_20K8) return 20.8;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_31K25) return 31.25;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_41K7) return 41.7;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_62K5) return 62.5;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_125K) return 125;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_250K) return 250;
+	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_500K) return 500;
+	
+	return 20.8;
+};
+
 double FrequencyError(int Channel)
 {
 	int32_t Temp;
@@ -418,7 +445,8 @@ double FrequencyError(int Channel)
 		Temp = Temp - 524288;
 	}
 
-	return - ((double)Temp * (1<<24) / 32000000.0) * (125000 / 500000.0);
+	// return - ((double)Temp * (1<<24) / 32000000.0) * (125000 / 500000.0);
+	return - ((double)Temp * (1<<24) / 32000000.0) * (BandwidthInKHz(Channel) / 500.0);
 }	
 
 int receiveMessage(int LoRaChannel, unsigned char *message)
@@ -590,6 +618,12 @@ void CheckForPacketOnListeningChannels(void)
 							printf("SMS uplink message %s", Message);
 							ProcessSMSUplinkMessage(LoRaChannel, Message);
 						}
+#						ifdef EXTRAS_PRESENT
+							else if (ProcessExtraMessage(LoRaChannel, Message, Bytes, GPS))
+							{
+								// Handled
+							}
+#						endif	
 						else
 						{
 							printf("Unknown message %02Xh\n", Message[0]);
@@ -632,7 +666,7 @@ int CheckForFreeChannel(struct TGPS *GPS)
 					
 					return LoRaChannel;
 				}
-				else if ((Config.LoRaDevices[LoRaChannel].CycleTime > 0) || (Config.LoRaDevices[LoRaChannel].UplinkCycle > 0))
+				else if ((Config.LoRaDevices[LoRaChannel].CycleTime > 0) || (Config.LoRaDevices[LoRaChannel].UplinkCycle > 0) || Config.LoRaDevices[LoRaChannel].ListenOnly)
 				{
 					// TDM system and not time to send, so we can listen
 					if (Config.LoRaDevices[LoRaChannel].LoRaMode == lmIdle)
@@ -781,6 +815,12 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 
 			ReadBoolean(fp, "LORA_Binary", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].Binary));			
 			printf("LORA%d Set To %s\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].Binary ? "Binary" : "ASCII");
+			
+			ReadBoolean(fp, "LORA_ListenOnly", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].ListenOnly));
+			if (Config->LoRaDevices[LoRaChannel].ListenOnly)
+			{
+				printf("LORA%d Set To ListenOnly Mode\n", LoRaChannel);
+			}
 			
 			Config->LoRaDevices[LoRaChannel].UplinkPeriod = ReadInteger(fp, "LORA_Uplink_Period", LoRaChannel, 0, 0);			
 			Config->LoRaDevices[LoRaChannel].UplinkCycle = ReadInteger(fp, "LORA_Uplink_Cycle", LoRaChannel, 0, 0);	

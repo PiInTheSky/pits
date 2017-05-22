@@ -945,6 +945,14 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 				ExtraFields7);
 	}
 	
+printf("ExtraFields1 = %s\n", ExtraFields1);
+printf("ExtraFields2 = %s\n", ExtraFields2);
+printf("ExtraFields3 = %s\n", ExtraFields3);
+printf("ExtraFields4 = %s\n", ExtraFields4);
+printf("ExtraFields5 = %s\n", ExtraFields5);
+printf("ExtraFields6 = %s\n", ExtraFields6);
+printf("ExtraFields7 = %s\n", ExtraFields7);
+	
 	AppendCRC((char *)TxLine);
 	
 	// Separate sentence for landing prediction ?

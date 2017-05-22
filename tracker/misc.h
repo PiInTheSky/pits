@@ -62,6 +62,7 @@ struct TLoRaDevice
 	int LastPacketRSSI;
 	int LastPacketSNR;
 	int PacketCount;
+	int ListenOnly;					// True for listen-only payload that waits for an uplink before responding (or times out and sends anyway)
 	
 #	ifdef EXTRAS_PRESENT
 #		include "ex_misc_lora.h"
