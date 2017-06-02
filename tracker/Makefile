@@ -5,9 +5,7 @@ HED=$(wildcard *.h)
 OBJ=$(SRC:.c=.o) # replaces the .c from SRC with .o
 EXE=tracker
 
-ifneq ($(wildcard ex_tracker.h),)
-  DEFINES=-DEXTRAS_PRESENT
-endif
+-include ex_Makefile
 
 INDOPT= -bap -bl -blf -bli0 -brs -cbi0 -cdw -cs -ci4 -cli4 -i4 -ip0 -nbc -nce -lp -npcs -nut -pmt -psl -prs -ts4
 

@@ -8,10 +8,11 @@
 
 #include "gps.h"
 #include "misc.h"
+#include "prediction.h"
 
-#define DEG2RAD (3.142 / 180)
-#define SLOTSIZE 100
-#define POLL_PERIOD 10
+#ifdef EXTRAS_PRESENT
+#	include "ex_prediction.h"
+#endif	
 
 struct TPosition
 {
@@ -19,7 +20,19 @@ struct TPosition
 	double LongitudeDelta;
 };
 
-struct TPosition Positions[45000 / SLOTSIZE];		// 100m slots from 0 to 45km
+struct TPosition Positions[SLOTS];		// 100m slots from 0 to 45km
+
+int GetSlot(int32_t Altitude)
+{
+	int Slot;
+	
+	Slot = Altitude / SLOTSIZE;
+	
+	if (Slot < 0) Slot = 0;
+	if (Slot >= SLOTS) Slot = SLOTS-1;
+	
+	return Slot;
+}
 
 double CalculateAirDensity(double Altitude)
 {
@@ -62,15 +75,17 @@ double CalculateCDA(double Weight, double Altitude, double DescentRate)
 	
 	Density = CalculateAirDensity(Altitude);
 	
-	printf("Alt %lf, Rate %lf, CDA %lf\n", Altitude, DescentRate, (Weight * 9.81)/(0.5 * Density * DescentRate * DescentRate));
+	printf("Alt %.0lf, Rate %.1lf, CDA %.1lf\n", Altitude, DescentRate, (Weight * 9.81)/(0.5 * Density * DescentRate * DescentRate));
 
     return (Weight * 9.81)/(0.5 * Density * DescentRate * DescentRate);
 }
 
+
+	
 void *PredictionLoop(void *some_void_ptr)
 {
 	struct TGPS *GPS;
-	double PreviousLatitude, PreviousLongitude, CDA;
+	double PreviousLatitude, PreviousLongitude;
 	unsigned long PreviousAltitude;
 
 	GPS = (struct TGPS *)some_void_ptr;
@@ -79,79 +94,93 @@ void *PredictionLoop(void *some_void_ptr)
 	PreviousLongitude = 0;
 	PreviousAltitude = 0;
 	
-	CDA = Config.cd_area;
+	GPS->CDA = Config.cd_area;
 
 	while (1)
 	{
 		sleep(POLL_PERIOD);
-		
+				
 		if (GPS->Satellites >= 4)
 		{
-			if (PreviousAltitude > 0)
+			int Slot;
+			double Latitude, Longitude, TimeInSlot, DescentRate, TimeTillLanding;
+			unsigned long Altitude, DistanceInSlot;
+			char Temp[200];
+			
+			if ((GPS->FlightMode >= fmLaunched) && (GPS->FlightMode < fmLanded))
 			{
-				int Slot;
-				double Latitude, Longitude, TimeInSlot, DescentRate, TimeTillLanding;
-				unsigned long Altitude, DistanceInSlot;
-				char Temp[200];
 				
-				// Up or down ?
-				if (GPS->Altitude > PreviousAltitude)
+				// Ascent or descent?
+				if (GPS->FlightMode == fmLaunched)
 				{
 					// Going up - store deltas
-					Slot = (GPS->Altitude/2 + PreviousAltitude/2) / SLOTSIZE;
+					Slot = GetSlot(GPS->Altitude/2 + PreviousAltitude/2);
 					
 					// Deltas are scaled to be horizontal distance per second (i.e. speed)
 					Positions[Slot].LatitudeDelta = (GPS->Latitude - PreviousLatitude) / POLL_PERIOD;
-					// Positions[Slot].LongitudeDelta = (GPS->Longitude - PreviousLongitude) * cos(((GPS->Latitude + PreviousLatitude)/2) * DEG2RAD) / POLL_PERIOD;
 					Positions[Slot].LongitudeDelta = (GPS->Longitude - PreviousLongitude) / POLL_PERIOD;
 					printf("Slot %d (%" PRId32 "): %lf, %lf\n", Slot, GPS->Altitude, Positions[Slot].LatitudeDelta, Positions[Slot].LongitudeDelta);
 				}
-  				else if ((GPS->MaximumAltitude > 5000) && (PreviousAltitude < GPS->MaximumAltitude) && (GPS->Altitude < PreviousAltitude) && (GPS->Altitude > 100))
+				// else if ((GPS->MaximumAltitude > 5000) && (PreviousAltitude < GPS->MaximumAltitude) && (GPS->Altitude < PreviousAltitude) && (GPS->Altitude > Config.TargetAltitude))
+				else if ((GPS->FlightMode >= fmBurst) && (GPS->FlightMode <= fmLanding))
 				{
 					// Coming down - try and calculate how well chute is doing
 
-					CDA = (CDA + CalculateCDA(Config.payload_weight,
-											  GPS->Altitude/2 + PreviousAltitude/2,
-											  ((double)PreviousAltitude - (double)GPS->Altitude) / POLL_PERIOD)) / 2;
+					GPS->CDA = (GPS->CDA*4 + CalculateCDA(Config.payload_weight,
+														GPS->Altitude/2 + PreviousAltitude/2,
+														((double)PreviousAltitude - (double)GPS->Altitude) / POLL_PERIOD)) / 5;
+
 				}
-				
 				// Estimate landing position
 				Altitude = GPS->Altitude;
 				Latitude = GPS->Latitude;
 				Longitude = GPS->Longitude;
 				TimeTillLanding = 0;
 				
-				Slot = Altitude / SLOTSIZE;
-				DistanceInSlot = Altitude - (Slot * SLOTSIZE);
+				Slot = GetSlot(Altitude);
+				DistanceInSlot = Altitude + 1 - (Slot * SLOTSIZE);
 				
-				while (Altitude > 0)
+				while (Altitude > Config.TargetAltitude)
 				{
-					Slot = Altitude / SLOTSIZE;
+					Slot = GetSlot(Altitude);
 					
-					DescentRate = CalculateDescentRate(Config.payload_weight, CDA, Altitude);
+					if (Slot == GetSlot(Config.TargetAltitude))
+					{
+						DistanceInSlot = Altitude - Config.TargetAltitude;
+					}
+					
+					DescentRate = CalculateDescentRate(Config.payload_weight, GPS->CDA, Altitude);
 					TimeInSlot = DistanceInSlot / DescentRate;
 					
 					Latitude += Positions[Slot].LatitudeDelta * TimeInSlot;
 					Longitude += Positions[Slot].LongitudeDelta * TimeInSlot;
 					
-					// printf("alt %lu: lat=%lf, long=%lf, rate=%lf, dist=%lu, time=%lf\n", Altitude, Latitude, Longitude, DescentRate, DistanceInSlot, TimeInSlot);
+					// printf("SLOT %d: alt %lu, lat=%lf, long=%lf, rate=%lf, dist=%lu, time=%lf\n", Slot, Altitude, Latitude, Longitude, DescentRate, DistanceInSlot, TimeInSlot);
 					
-					TimeTillLanding += TimeInSlot;
+					TimeTillLanding = TimeTillLanding + TimeInSlot;
 					Altitude -= DistanceInSlot;
 					DistanceInSlot = SLOTSIZE;
 				}
-				
+							
 				GPS->PredictedLatitude = Latitude;
 				GPS->PredictedLongitude = Longitude;
-				printf("Expected Descent Rate = %4.1lf (now) %3.1lf (landing), time till landing %5.0lf\n", 
-						CalculateDescentRate(Config.payload_weight, Config.cd_area, GPS->Altitude),
-						CalculateDescentRate(Config.payload_weight, Config.cd_area, 100),
-						TimeTillLanding);
+				GPS->PredictedLandingSpeed = CalculateDescentRate(Config.payload_weight, GPS->CDA, Config.TargetAltitude);
+				GPS->TimeTillLanding = TimeTillLanding;
+								
+				printf("Expected Descent Rate = %4.1lf (now) %3.1lf (landing), time till landing %d\n", 
+						CalculateDescentRate(Config.payload_weight, GPS->CDA, GPS->Altitude),
+						GPS->PredictedLandingSpeed,
+						GPS->TimeTillLanding);
 
 				printf("Current    %f, %f, alt %" PRId32 "\n", GPS->Latitude, GPS->Longitude, GPS->Altitude);
-				printf("Prediction %f, %f, CDA %lf\n", GPS->PredictedLatitude, GPS->PredictedLongitude, CDA);
+				printf("Prediction %f, %f, CDA %lf\n", GPS->PredictedLatitude, GPS->PredictedLongitude, GPS->CDA);
 				
-				sprintf(Temp, "%" PRId32 ", %f, %f, %f, %f, %lf\n", GPS->Altitude, GPS->Latitude, GPS->Longitude, GPS->PredictedLatitude, GPS->PredictedLongitude, CDA);
+#				ifdef EXTRAS_PRESENT
+					Slot = GetSlot(GPS->Altitude/2 + PreviousAltitude/2);
+					prediction_descent_calcs(GPS, Slot, PreviousLatitude, PreviousLongitude, PreviousAltitude, Positions[Slot].LatitudeDelta, Positions[Slot].LongitudeDelta);
+#				endif	
+				
+				sprintf(Temp, "%" PRId32 ", %f, %f, %f, %f, %lf\n", GPS->Altitude, GPS->Latitude, GPS->Longitude, GPS->PredictedLatitude, GPS->PredictedLongitude, GPS->CDA);
 				WriteLog("prediction.txt", Temp);
 			}
 			

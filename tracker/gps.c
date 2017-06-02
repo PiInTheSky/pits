@@ -530,10 +530,17 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 					
 					if (ActionMask & 2)
 					{
-						GPS->Latitude = FixPosition(latitude);
-						if (ns == 'S') GPS->Latitude = -GPS->Latitude;
-						GPS->Longitude = FixPosition(longitude);
-						if (ew == 'W') GPS->Longitude = -GPS->Longitude;
+						latitude = FixPosition(latitude);
+						if (ns == 'S') latitude = -latitude;
+						longitude = FixPosition(longitude);
+						if (ew == 'W') longitude = -longitude;
+						
+#						ifdef EXTRAS_PRESENT
+							gps_postprocess_position(GPS, ActionMask, latitude, longitude);
+#						else
+							GPS->Latitude = latitude;
+							GPS->Longitude = longitude;
+#						endif					
 						
 						if (GPS->Altitude <= 0)
 						{
@@ -558,23 +565,34 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						if ((GPS->AscentRate >= 1.0) && (GPS->Altitude > (GPS->MinimumAltitude+50)) && (GPS->FlightMode == fmIdle))
 						{
 							GPS->FlightMode = fmLaunched;
+							printf("*** LAUNCHED ***\n");
 						}
 
 						// Burst?
-						if ((GPS->AscentRate < -3.0) && (GPS->Altitude < (GPS->MaximumAltitude+50)) && (GPS->MaximumAltitude >= (GPS->MinimumAltitude+2000)) && (GPS->FlightMode <= fmLaunched))
+						if ((GPS->AscentRate < -3.0) && (GPS->Altitude < (GPS->MaximumAltitude+50)) && (GPS->MaximumAltitude >= (GPS->MinimumAltitude+2000)) && (GPS->FlightMode == fmLaunched))
 						{
 							GPS->FlightMode = fmBurst;
+							printf("*** BURST ***\n");
 						}
 						
-						// Landed?
-						if ((GPS->AscentRate >= -0.1) && (GPS->Altitude <= 2000) && (GPS->FlightMode >= fmBurst) && (GPS->FlightMode < fmLanded))
+						if ((GPS->FlightMode == fmBurst) && (GPS->Altitude < (GPS->MaximumAltitude-1000)))
 						{
-							GPS->FlightMode = fmLanded;
+							GPS->FlightMode = fmDescending;
+							printf("*** DESCENDING ***\n");
+						}
+							
+						if ((GPS->FlightMode == fmDescending) && (GPS->Altitude < (Config.TargetAltitude+200)))
+						{
+							GPS->FlightMode = fmLanding;
+							printf("*** LANDING ***\n");
 						}
 
-#						ifdef EXTRAS_PRESENT
-							gps_postprocess_position(GPS, ActionMask);
-#						endif					
+						// Landed?
+						if ((GPS->AscentRate >= -0.1) && (GPS->Altitude <= Config.TargetAltitude+2000) && (GPS->FlightMode >= fmBurst) && (GPS->FlightMode < fmLanded))
+						{
+							GPS->FlightMode = fmLanded;
+							printf("*** LANDED ***\n");
+						}
 					}
 				}
 				if (ActionMask & 2)

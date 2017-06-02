@@ -156,7 +156,7 @@ struct TConfig
 	int EnableBMP085;
 	int EnableBME280;
 	int ExternalDS18B20;
-	int EnableMPU9250;
+	int EnableMPU9150;
 	
 	// Logging
 	int EnableGPSLogging;
@@ -202,6 +202,7 @@ struct TConfig
 	
 	// Landing prediction
 	int EnableLandingPrediction;
+	int32_t TargetAltitude;
 	float cd_area;
 	float payload_weight;
 	char PredictionID[16];

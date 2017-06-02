@@ -499,7 +499,7 @@ int receiveMessage(int LoRaChannel, unsigned char *message)
 	return Bytes;
 }
 
-void CheckForPacketOnListeningChannels(void)
+void CheckForPacketOnListeningChannels(struct TGPS *GPS)
 {
 	int LoRaChannel;
 	
@@ -797,8 +797,11 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				Config->LoRaDevices[LoRaChannel].Slot = ReadInteger(fp, "LORA_Slot", LoRaChannel, 0, 0);
 				printf("LORA%d Slot %d\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].Slot);
 
-				Config->LoRaDevices[LoRaChannel].RepeatSlot = ReadInteger(fp, "LORA_Repeat", LoRaChannel, 0, 0);			
-				printf("LORA%d Repeat Slot %d\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].RepeatSlot);
+				Config->LoRaDevices[LoRaChannel].RepeatSlot = ReadInteger(fp, "LORA_Repeat", LoRaChannel, 0, -1);
+				if (Config->LoRaDevices[LoRaChannel].RepeatSlot >= 0)
+				{
+					printf("LORA%d Repeat Slot %d\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].RepeatSlot);
+				}
 
 				Config->LoRaDevices[LoRaChannel].UplinkSlot = ReadInteger(fp, "LORA_Uplink", LoRaChannel, 0, 0);			
 				printf("LORA%d Uplink Slot %d\n", LoRaChannel, Config->LoRaDevices[LoRaChannel].UplinkSlot);
@@ -960,7 +963,7 @@ void *LoRaLoop(void *some_void_ptr)
 	{	
 		delay(LoopMS);								// To stop this loop gobbling up CPU
 
-		CheckForPacketOnListeningChannels();
+		CheckForPacketOnListeningChannels(GPS);
 		
 		LoRaChannel = CheckForFreeChannel(GPS);		// 0 or 1 if there's a free channel and we should be sending on that channel now
 
@@ -1053,6 +1056,10 @@ void *LoRaLoop(void *some_void_ptr)
 					{
 						PacketLength = BuildSentence(Sentence, Channel, GPS);
 						LogMessage("LORA%d: %s", LoRaChannel, Sentence);
+						if (Config.EnableTelemetryLogging)
+						{
+							WriteLog("telemetry.txt", (char *)Sentence);
+						}
 					}
 									
 					SendLoRaData(LoRaChannel, Sentence, PacketLength);		

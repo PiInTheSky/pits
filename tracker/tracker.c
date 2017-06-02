@@ -705,25 +705,6 @@ int main(void)
 	system("rm -f ssdv*.bin");
 
 	memset(&GPS, 0, sizeof(struct TGPS));
-	// GPS.SecondsInDay = 0;
-	// GPS.Hours = 0;
-	// GPS.Minutes = 0;
-	// GPS.Seconds = 0;
-	// GPS.Longitude = 0.0;
-	// GPS.Latitude = 0.0;
-	// GPS.Altitude = 0;
-	// GPS.Satellites = 0;
-	// GPS.Speed = 0.0;
-	// GPS.Direction = 0.0;
-	// GPS.DS18B20Temperature[0] = 0.0;
-	// GPS.DS18B20Temperature[1] = 0.0;
-	// GPS.BatteryVoltage = 0.0;
-	// GPS.BoardCurrent = 0.0;	
-	// GPS.BMP180Temperature = 0.0;
-	// GPS.Pressure = 0.0;
-	// GPS.MaximumAltitude = 0.0;
-	// GPS.DS18B20Count = 0;
-
 	
 	// Set up I/O
 	if (wiringPiSetup() == -1)
@@ -923,7 +904,7 @@ int main(void)
 	}	
 	
 #	ifdef EXTRAS_PRESENT
-		tracker_load_threads();
+		tracker_load_threads(&GPS);
 #	endif
 	if (!Config.DisableRTTY && (fd >= 0))
 	{

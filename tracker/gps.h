@@ -1,6 +1,6 @@
 // Types
 
-typedef enum {fmIdle, fmLaunched, fmBurst, fmHoming, fmDirect, fmDownwind, fmLanding, fmLanded} TFlightMode;
+typedef enum {fmIdle, fmLaunched, fmBurst, fmDescending, fmLanding, fmLanded} TFlightMode;
 
 struct TGPS
 {
@@ -43,14 +43,15 @@ struct TGPS
 #	ifdef EXTRAS_PRESENT
 #		include "ex_gps.h"
 #	endif		
-} GPS;
+};
 
 
 // functions
 
 void *GPSLoop(void *some_void_ptr);
 
+
 #ifdef EXTRAS_PRESENT
-void gps_postprocess_position(struct TGPS *GPS, int ActionMask);
+void gps_postprocess_position(struct TGPS *GPS, int ActionMask, float latitude, float longitude);
 #endif	
 
