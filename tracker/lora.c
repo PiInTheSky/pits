@@ -414,7 +414,7 @@ void startReceiving(int LoRaChannel)
 	}
 }
 
-double BandwidthInKHz(Channel)
+double BandwidthInKHz(int Channel)
 {
 	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_7K8) return 7.8;
 	if (Config.LoRaDevices[Channel].Bandwidth == BANDWIDTH_10K4) return 10.4;

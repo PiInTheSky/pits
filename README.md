@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+19/08/2017
+==========
+
+- Changed startup to use systemd
+
 10/04/2017
 ==========
 
