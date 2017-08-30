@@ -453,32 +453,6 @@ void MarkMissingPackets(int Channel, int ImageNumber, int FirstMissingPacket, in
 	}
 }
 
-void ProcessSMSUplinkMessage(int LoRaChannel, unsigned char *Message)
-{
-	// Process uplink message (e.g. for Astro Pi scrolling LED)
-	// Message is like "#001,Hello Dave!\n"
-	// or "#001,First Message\nSecond Message\n"
-	char FileName[32], *Token;
-	int MessageNumber;
-	FILE *fp;
-	
-	Token = strtok((char *)Message+1, ",");
-	MessageNumber = atoi(Token);
-	
-	sprintf(FileName, "Uplink_%d.sms", MessageNumber);
-	
-	Token = strtok(NULL, "\n");
-	
-	if ((fp = fopen(FileName, "wt")) != NULL)
-	{
-		fputs(Token, fp);
-		fclose(fp);
-		
-		Config.LoRaDevices[LoRaChannel].MessageCount++;
-		Config.LoRaDevices[LoRaChannel].LastMessageNumber = MessageNumber;
-	}
-}
-
 void ProcessSSDVUplinkMessage(int Channel, unsigned char *Message)
 {
 	int Value, Image, RangeStart;
@@ -599,7 +573,7 @@ double ReadFloat(FILE *fp, char *keyword, int Channel, int NeedValue, double Def
 	return DefaultValue;
 }
 
-int ReadInteger(FILE *fp, char *keyword, int Channel, int NeedValue, int DefaultValue)
+int32_t ReadInteger(FILE *fp, char *keyword, int Channel, int NeedValue, int DefaultValue)
 {
 	char Temp[64];
 	
@@ -745,7 +719,7 @@ int prog_count(char* name)
 void LogMessage(const char *format, ...)
 {
 	#define MAX_LEN 180
-	char Buffer[200];
+	char Buffer[300];
 	
     va_list args;
     va_start(args, format);
@@ -754,12 +728,12 @@ void LogMessage(const char *format, ...)
 
     va_end(args);
 
-	if (strlen(Buffer) > MAX_LEN)
-	{
-		Buffer[MAX_LEN-2] = '.';
-		Buffer[MAX_LEN-1] = '.';
-		Buffer[MAX_LEN] = 0;
-	}
+	// if (strlen(Buffer) > MAX_LEN)
+	// {
+		// Buffer[MAX_LEN-2] = '.';
+		// Buffer[MAX_LEN-1] = '.';
+		// Buffer[MAX_LEN] = 0;
+	// }
 
 	if (Buffer[strlen(Buffer)-1] == '\n')
 	{
@@ -862,7 +836,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 
 		if (Config.LoRaDevices[LoRaChannel].EnableMessageStatus)
 		{	
-			sprintf(ExtraFields6, ",%d,%d", Config.LoRaDevices[LoRaChannel].LastMessageNumber, Config.LoRaDevices[LoRaChannel].MessageCount);
+			sprintf(ExtraFields6, ",%s", Config.LoRaDevices[LoRaChannel].LastCommand);
 		}
 		
 	}
@@ -965,4 +939,18 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	}
 
 	return strlen((char *)TxLine) + 1;
+}
+
+int FixDirection180(int Angle)
+{
+	if (Angle < -180)
+	{
+		return Angle + 180;
+	}
+	if (Angle > 180)
+	{
+		return Angle - 180;
+	}
+	
+	return Angle;
 }

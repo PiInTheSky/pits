@@ -30,7 +30,7 @@ struct TLoRaDevice
 	int AirCount;
 	int GroundCount;
 	int BadCRCCount;
-	char LastCommand[128];
+	char LastCommand[256];
 	unsigned char PacketToRepeat[256];
 	unsigned char UplinkPacket[256];
 	int PacketRepeatLength;
@@ -156,7 +156,6 @@ struct TConfig
 	int EnableBMP085;
 	int EnableBME280;
 	int ExternalDS18B20;
-	int EnableMPU9150;
 	
 	// Logging
 	int EnableGPSLogging;
@@ -203,6 +202,8 @@ struct TConfig
 	// Landing prediction
 	int EnableLandingPrediction;
 	int32_t TargetAltitude;
+	int32_t LandingAltitude;
+	
 	float cd_area;
 	float payload_weight;
 	char PredictionID[16];
@@ -239,3 +240,4 @@ int prog_count(char* name);
 int GetBoardType(int *i2cChannel);
 int NoMoreSSDVPacketsToSend(int Channel);
 int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS);
+int FixDirection180(int Angle);

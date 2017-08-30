@@ -511,6 +511,10 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 		if (strncmp(Buffer+3, "GGA", 3) == 0)
 		{
 			GPS->MessageCount++;
+			if (GPS->FlightMode >= fmLaunched)
+			{
+				GPS->SecondsSinceLaunch++;
+			}
 			if (sscanf(Buffer+7, "%f,%f,%c,%f,%c,%d,%d,%f,%f,%c", &utc_time, &latitude, &ns, &longitude, &ew, &lock, &satellites, &hdop, &altitude, &units) >= 1)
 			{	
 				// $GPGGA,124943.00,5157.01557,N,00232.66381,W,1,09,1.01,149.3,M,48.6,M,,*42
@@ -537,6 +541,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						
 #						ifdef EXTRAS_PRESENT
 							gps_postprocess_position(GPS, ActionMask, latitude, longitude);
+							cutdown_checks(GPS);
 #						else
 							GPS->Latitude = latitude;
 							GPS->Longitude = longitude;
@@ -562,33 +567,25 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						}
 
 						// Launched?
-						if ((GPS->AscentRate >= 1.0) && (GPS->Altitude > (GPS->MinimumAltitude+50)) && (GPS->FlightMode == fmIdle))
+						if ((GPS->AscentRate >= 1.0) && (GPS->Altitude > (GPS->MinimumAltitude+150)) && (GPS->FlightMode == fmIdle))
 						{
 							GPS->FlightMode = fmLaunched;
 							printf("*** LAUNCHED ***\n");
 						}
 
 						// Burst?
-						if ((GPS->AscentRate < -3.0) && (GPS->Altitude < (GPS->MaximumAltitude+50)) && (GPS->MaximumAltitude >= (GPS->MinimumAltitude+2000)) && (GPS->FlightMode == fmLaunched))
-						{
-							GPS->FlightMode = fmBurst;
-							printf("*** BURST ***\n");
-						}
-						
-						if ((GPS->FlightMode == fmBurst) && (GPS->Altitude < (GPS->MaximumAltitude-1000)))
+						if ((GPS->AscentRate < -10.0) && (GPS->Altitude < (GPS->MaximumAltitude+50)) && (GPS->MaximumAltitude >= (GPS->MinimumAltitude+2000)) && (GPS->FlightMode == fmLaunched))
 						{
 							GPS->FlightMode = fmDescending;
 							printf("*** DESCENDING ***\n");
 						}
-							
-						if ((GPS->FlightMode == fmDescending) && (GPS->Altitude < (Config.TargetAltitude+200)))
-						{
-							GPS->FlightMode = fmLanding;
-							printf("*** LANDING ***\n");
-						}
-
+						
+						#ifdef EXTRAS_PRESENT
+							gps_flight_modes(GPS);
+						#endif
+						
 						// Landed?
-						if ((GPS->AscentRate >= -0.1) && (GPS->Altitude <= Config.TargetAltitude+2000) && (GPS->FlightMode >= fmBurst) && (GPS->FlightMode < fmLanded))
+						if ((GPS->AscentRate >= -0.1) && (GPS->Altitude <= Config.TargetAltitude+2000) && (GPS->FlightMode >= fmDescending) && (GPS->FlightMode < fmLanded))
 						{
 							GPS->FlightMode = fmLanded;
 							printf("*** LANDED ***\n");
@@ -763,21 +760,20 @@ void *GPSLoop(void *some_void_ptr)
 					
 					if ((fp != NULL) && (strstr(Line, "GGA") != NULL))
 					{
-
-						char Buffer[100];
+						static int PostFileCount=0;
+						static char Buffer[100];
 						
 						// Get time only from GPS, then get position from NMEA file
 						if (fgets(Buffer, sizeof Buffer, fp) == NULL)
 						{
-							fclose(fp);
-							// fp = NULL;
-							exit(1);
+							if (++PostFileCount > 20)
+							{
+								fclose(fp);
+								exit(1);
+							}
 						}
-						else
-						{
-							ProcessLine(NULL, GPS, Line, Length, 1);
-							ProcessLine(NULL, GPS, Buffer, strlen(Buffer)-1, 2);
-						}
+						ProcessLine(NULL, GPS, Line, Length, 1);
+						ProcessLine(NULL, GPS, Buffer, strlen(Buffer)-1, 2);
 					}
 					else
 					{				

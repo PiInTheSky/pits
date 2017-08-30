@@ -14,12 +14,6 @@
 #	include "ex_prediction.h"
 #endif	
 
-struct TPosition
-{
-	double LatitudeDelta;
-	double LongitudeDelta;
-};
-
 struct TPosition Positions[SLOTS];		// 100m slots from 0 to 45km
 
 int GetSlot(int32_t Altitude)
@@ -122,7 +116,7 @@ void *PredictionLoop(void *some_void_ptr)
 					printf("Slot %d (%" PRId32 "): %lf, %lf\n", Slot, GPS->Altitude, Positions[Slot].LatitudeDelta, Positions[Slot].LongitudeDelta);
 				}
 				// else if ((GPS->MaximumAltitude > 5000) && (PreviousAltitude < GPS->MaximumAltitude) && (GPS->Altitude < PreviousAltitude) && (GPS->Altitude > Config.TargetAltitude))
-				else if ((GPS->FlightMode >= fmBurst) && (GPS->FlightMode <= fmLanding))
+				else if ((GPS->FlightMode >= fmDescending) && (GPS->FlightMode <= fmLanding))
 				{
 					// Coming down - try and calculate how well chute is doing
 
@@ -131,6 +125,7 @@ void *PredictionLoop(void *some_void_ptr)
 														((double)PreviousAltitude - (double)GPS->Altitude) / POLL_PERIOD)) / 5;
 
 				}
+				
 				// Estimate landing position
 				Altitude = GPS->Altitude;
 				Latitude = GPS->Latitude;

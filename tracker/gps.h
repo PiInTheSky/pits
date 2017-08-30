@@ -1,6 +1,6 @@
 // Types
 
-typedef enum {fmIdle, fmLaunched, fmBurst, fmDescending, fmLanding, fmLanded} TFlightMode;
+typedef enum {fmIdle, fmLaunched, fmDescending, fmHoming, fmDirect, fmDownwind, fmLanding, fmLanded} TFlightMode;
 
 struct TGPS
 {
@@ -12,6 +12,7 @@ struct TGPS
 	unsigned int Satellites;
 	int Speed;
 	int Direction;
+	unsigned long SecondsSinceLaunch;					// Time in seconds since midnight
 	
 	// Calculated from GPS
 	int32_t MaximumAltitude, MinimumAltitude;
@@ -53,5 +54,8 @@ void *GPSLoop(void *some_void_ptr);
 
 #ifdef EXTRAS_PRESENT
 void gps_postprocess_position(struct TGPS *GPS, int ActionMask, float latitude, float longitude);
+void gps_flight_modes(struct TGPS *GPS);
+
+void cutdown_checks(struct TGPS *GPS);
 #endif	
 

@@ -251,6 +251,8 @@ void LoadConfigFile(struct TConfig *Config)
 	{
 		Config->cd_area = ReadFloat(fp, "cd_area", -1, 0, 0.66);
 		Config->payload_weight = ReadFloat(fp, "payload_weight", -1, 0, 0.66);
+		Config->TargetAltitude = ReadInteger(fp, "Target_Altitude", -1, 0, 0);
+		Config->LandingAltitude = ReadInteger(fp, "Landing_Altitude", -1, 0, Config->TargetAltitude + 200);
 		ReadString(fp, "prediction_id", -1, Config->PredictionID, sizeof(Config->PredictionID), 0);
 	}
 	
@@ -734,6 +736,21 @@ int main(void)
 	
 		fd = OpenSerialPort();
 
+		if (fd < 0)
+		{
+			printf("\nFailed to open serial port for RTTY.  Please check the serial port steps in the PITS manual.\n");
+			if (Config.BoardType == 4)
+			{
+				printf("As this is a Pi Zero W, make sure that you followed the special steps for the Pi Zero W / Pi 3 B\n");
+			}
+			if (Config.BoardType == 2)
+			{
+				printf("As this is a Pi 3 B, make sure that you followed the special steps for the Pi Zero W / Pi 3 B\n");
+			}
+
+			exit(1);
+		}
+		
 		digitalWrite (NTX2B_ENABLE, 1);
 	}
 		
