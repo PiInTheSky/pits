@@ -400,7 +400,10 @@ void startReceiving(int LoRaChannel)
 {
 	if (Config.LoRaDevices[LoRaChannel].InUse)
 	{
-		printf ("Listening on LoRa channel %d\n", LoRaChannel);
+		if (!Config.LoRaDevices[LoRaChannel].ListenOnly)
+		{
+			printf ("Listening on LoRa channel %d\n", LoRaChannel);
+		}
 		
 		writeRegister(LoRaChannel, REG_DIO_MAPPING_1, 0x00);		// 00 00 00 00 maps DIO0 to RxDone
 	
@@ -454,7 +457,10 @@ int receiveMessage(int LoRaChannel, unsigned char *message)
 	int i, Bytes, currentAddr, x;
 	unsigned char data[257];
 
-	printf ("Rx LoRa channel %d\n", LoRaChannel);
+	if (!Config.LoRaDevices[LoRaChannel].ListenOnly)
+	{
+		printf ("Rx LoRa channel %d\n", LoRaChannel);
+	}
 	
 	Bytes = 0;
 	
@@ -475,11 +481,14 @@ int receiveMessage(int LoRaChannel, unsigned char *message)
 	{
 		currentAddr = readRegister(LoRaChannel, REG_FIFO_RX_CURRENT_ADDR);
 		Bytes = readRegister(LoRaChannel, REG_RX_NB_BYTES);
-		printf ("*** Received %d bytes\n", Bytes);
+		if (!Config.LoRaDevices[LoRaChannel].ListenOnly)
+		{
+			printf ("*** Received %d bytes\n", Bytes);
+		}
 
 		// ChannelPrintf(Channel,  9, 1, "Packet   SNR = %4d   ", (char)(readRegister(Channel, REG_PACKET_SNR)) / 4);
 		// ChannelPrintf(Channel, 10, 1, "Packet  RSSI = %4d   ", readRegister(Channel, REG_PACKET_RSSI) - 157);
-		printf("LORA%d: Freq. Error = %4.1lfkHz\n", LoRaChannel, FrequencyError(LoRaChannel) / 1000);
+		// printf("LORA%d: Frequency Difference = %4.1lfkHz\n", LoRaChannel, FrequencyError(LoRaChannel) / 1000);
 
 		writeRegister(LoRaChannel, REG_FIFO_ADDR_PTR, currentAddr);   
 		
@@ -665,7 +674,10 @@ int CheckForFreeChannel(struct TGPS *GPS)
 					// TDM system and not time to send, so we can listen
 					if (Config.LoRaDevices[LoRaChannel].LoRaMode == lmIdle)
 					{
-						printf("Uplink period ...\n");
+						if (!Config.LoRaDevices[LoRaChannel].ListenOnly)
+						{
+							printf("Uplink period ...\n");
+						}
 						
 						if (Config.LoRaDevices[LoRaChannel].UplinkFrequency > 0)
 						{

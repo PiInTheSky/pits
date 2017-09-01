@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+01/09/2017
+==========
+
+- Reduce amount of Rx-related guff when in listen-only mode
+
 19/08/2017
 ==========
 
@@ -69,7 +74,7 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 10/04/2017
 ==========
 
-- Added support direct upload to Habitat using an internet connection 
+- Added support direct upload to Habitat using an internet connection
  
 03/03/2017
 ==========
