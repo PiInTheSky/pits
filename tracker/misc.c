@@ -752,11 +752,12 @@ int devicetree(void)
 
 int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 {	
-static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
+	static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 	static char ExternalFields[100];
 	static FILE *ExternalFile=NULL;
 	static int FirstTime=1;
 	int LoRaChannel;
+	int ShowFields;
 	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7;
 	
 	if (FirstTime)
@@ -766,6 +767,7 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 	}
 	
 	Config.Channels[Channel].SentenceCounter++;
+	ShowFields = Config.Channels[Channel].SentenceCounter == 1;
 	
 	sprintf(TimeBuffer, "%02d:%02d:%02d", GPS->Hours, GPS->Minutes, GPS->Seconds);
 	
@@ -778,7 +780,7 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 	
 	ExtraFields7 = "";
 	
-	if (Config.Channels[Channel].SentenceCounter == 1) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Sped,Head,Sats,Int.Temp", Channels[Channel]);
+	if (ShowFields) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Sped,Head,Sats,Int.Temp", Channels[Channel]);
 	
 	
 	// Battery voltage and current, if available
@@ -791,33 +793,33 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 		// Pi A or B.  Only Battery Voltage on the PITS
 		
 		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
-		if (Config.Channels[Channel].SentenceCounter == 1) printf(",Volts");
+		if (ShowFields) printf(",Volts");
 	}
 	else
 	{
 		// Pi A+ or B+ (V1 or V2 or V3).  Full ADC for voltage and current
 
 		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
-		if (Config.Channels[Channel].SentenceCounter == 1) printf(",Volts,Current");
+		if (ShowFields) printf(",Volts,Current");
 	}
 	
 	// BMP Pressure/Temperature/Humidity, if available
 	if (Config.EnableBME280)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.0f,%0.1f", GPS->BMP180Temperature, GPS->Pressure, GPS->Humidity);
-		if (Config.Channels[Channel].SentenceCounter == 1) printf(",BME.Temp,Pressure,Humidity");
+		if (ShowFields) printf(",BME.Temp,Pressure,Humidity");
 	}
 	else if (Config.EnableBMP085)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
-		if (Config.Channels[Channel].SentenceCounter == 1) printf(",BMP.Temp,Pressure");
+		if (ShowFields) printf(",BMP.Temp,Pressure");
 	}
 	
 	// Second DS18B20 Temperature Sensor, if available
 	if (GPS->DS18B20Count > 1)
 	{
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
-		if (Config.Channels[Channel].SentenceCounter == 1) printf(",Ext.Temp");
+		if (ShowFields) printf(",Ext.Temp");
 	}
 	
 	// Landing Prediction, if enabled
@@ -829,7 +831,7 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 																GPS->PredictedLongitude,
 																GPS->PredictedLandingSpeed,
 																GPS->TimeTillLanding);
-		if (Config.Channels[Channel].SentenceCounter == 1) printf(",CDA,Pred.Lat,Pred.Lon,Pred.Land,Pred.TTL");
+		if (ShowFields) printf(",CDA,Pred.Lat,Pred.Lon,Pred.Land,Pred.TTL");
 	}
 	
 	// Specific to LoRa Uplink
@@ -842,13 +844,13 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 			sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[LoRaChannel].LastPacketRSSI,
 											   Config.LoRaDevices[LoRaChannel].LastPacketSNR,
 											   Config.LoRaDevices[LoRaChannel].PacketCount);
-			if (Config.Channels[Channel].SentenceCounter == 1) printf(",RSSI,SNR,Packets");
+			if (ShowFields) printf(",RSSI,SNR,Packets");
 		}
 
 		if (Config.LoRaDevices[LoRaChannel].EnableMessageStatus)
 		{	
 			sprintf(ExtraFields6, ",%s", Config.LoRaDevices[LoRaChannel].LastCommand);
-			if (Config.Channels[Channel].SentenceCounter == 1) printf(",Command");
+			if (ShowFields) printf(",Command");
 		}
 		
 	}
@@ -891,11 +893,9 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 			}
 			fseek(ExternalFile, 0, SEEK_END);
 			// clearerr(ExternalFile);
-			if (Config.Channels[Channel].SentenceCounter == 1) printf(",[ExternalCSV]");
+			if (ShowFields) printf(",[ExternalCSV]");
 		}
 	}	
-
-	if (Config.Channels[Channel].SentenceCounter == 1) printf("\n");
 	
 	// Bouy mode or normal mode ?
 	if ((Config.BuoyModeAltitude > 0) && (GPS->Altitude < Config.BuoyModeAltitude))
@@ -910,9 +910,11 @@ static char *Channels[6] = {"RTTY", "APRS", "LORA0", "LORA1", "FULL", "PIPE"};
 	else
 	{
 		#ifdef EXTRAS_PRESENT
-			ExtraFields7 = misc_get_sentence_fields(GPS);
+			ExtraFields7 = misc_get_sentence_fields(GPS, ShowFields);
 		#endif
 			
+		if (ShowFields) printf("\n");
+		
 		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s%s",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,

@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+05/09/2017
+==========
+
+- Print list of fields when sending first sentence for a channel.  Useful for setting up payload document.
+
 01/09/2017
 ==========
 
