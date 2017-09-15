@@ -819,13 +819,10 @@ int main(void)
 		}
 	}
 	
-	if ((Config.BoardType != 3) && (Config.BoardType != 4))
+	if (pthread_create(&DS18B20Thread, NULL, DS18B20Loop, &GPS))
 	{
-		if (pthread_create(&DS18B20Thread, NULL, DS18B20Loop, &GPS))
-		{
-			fprintf(stderr, "Error creating DS18B20s thread\n");
-			return 1;
-		}
+		fprintf(stderr, "Error creating DS18B20s thread\n");
+		return 1;
 	}
 
 	if ((Config.BoardType != 3) && (Config.BoardType != 4) && (!Config.DisableADC))

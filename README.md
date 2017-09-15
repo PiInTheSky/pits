@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+15/09/2017
+==========
+
+- Re-enabled temperature sensing for Pi Zero / W
+
 05/09/2017
 ==========
 
