@@ -72,10 +72,6 @@ void *DS18B20Loop(void *some_void_ptr)
 			
 			closedir(dir);
 		}
-		else
-		{
-			printf("COULD NOT OPEN DS18B20 FOLDER\n");
-		}
 		
 		if (GPS->DS18B20Count == 0)
 		{

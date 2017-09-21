@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+21/09/2017
+==========
+
+- Add LoRa mode 8 for SSDV repeater network
+
 15/09/2017
 ==========
 
