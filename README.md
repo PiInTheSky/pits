@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+04/02/2018
+==========
+
+- Fixed APRS pre-emphasis which was actually de-emphasis!
+
 21/09/2017
 ==========
 

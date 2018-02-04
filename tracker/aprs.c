@@ -180,7 +180,7 @@ void make_and_write_freq(FILE *f, UL cycles_per_bit, UL baud, UL lfreq, UL hfreq
 	{
 		// fwrite(&(_sine_table[(phase >> 7) & 0x1FF]), 1, 1, f);
 		int16_t v = _sine_table[(phase >> 7) & 0x1FF] * 0x80 - 0x4000;
-		if (High & Config.APRS_Preemphasis)
+		if (!High && Config.APRS_Preemphasis)
 		{	
 			v *= 0.65;
 		}
