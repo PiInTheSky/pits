@@ -378,6 +378,12 @@ int TimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 	if (Config.LoRaDevices[LoRaChannel].ListenOnly)
 	{
 		// Listen until spoken to, with timeout
+		if ((Config.LoRaDevices[LoRaChannel].PacketEveryMilliSeconds > 0) && ((Config.LoRaDevices[LoRaChannel].MillisSinceLastPacket += 5) >= Config.LoRaDevices[LoRaChannel].PacketEveryMilliSeconds))
+		{
+			// timed out
+			return 1;
+		}
+		
 		return 0;
 	}
 
@@ -937,7 +943,10 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				{
 					printf("      - Calling Packet will be sent on %s every %d packets\n", Config->LoRaDevices[LoRaChannel].CallingFrequency, Config->LoRaDevices[LoRaChannel].CallingCount);
 				}
-			}
+			}			
+#			ifdef EXTRAS_PRESENT
+				LoadExtraLoRaConfig(fp, Config, LoRaChannel);
+#			endif	
 		}
 		else
 		{
@@ -1059,6 +1068,12 @@ void *LoRaLoop(void *some_void_ptr)
 						PacketLength = BuildLoRaPositionPacket(Sentence, LoRaChannel, GPS);
 						printf("LoRa%d: Binary packet %d bytes\n", LoRaChannel, PacketLength);
 					}
+#					ifdef EXTRAS_PRESENT
+					else if (TimeForCustomLoRaPacket(&Config, LoRaChannel))
+					{
+						PacketLength = BuildCustomLoRaPacket(Sentence, LoRaChannel, GPS);
+					}
+#					endif	
 					else
 					{
 						PacketLength = BuildSentence(Sentence, Channel, GPS);
