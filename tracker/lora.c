@@ -27,6 +27,7 @@
 #ifdef EXTRAS_PRESENT
 #	include "ex_lora.h"
 #endif	
+#include "habpack.h"
 
 // RFM98
 uint8_t currentMode = 0x81;
@@ -829,8 +830,9 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				}
 			}
 
-			ReadBoolean(fp, "LORA_Binary", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].Binary));			
-			printf("      - Using %s Transmissions\n", Config->LoRaDevices[LoRaChannel].Binary ? "Binary" : "ASCII");
+			ReadBoolean(fp, "LORA_HABPack", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].HABPack));
+			ReadBoolean(fp, "LORA_Binary", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].Binary));
+			printf("      - Using %s Transmissions\n", Config->LoRaDevices[LoRaChannel].HABPack ? "HABPack" : (Config->LoRaDevices[LoRaChannel].Binary ? "Binary" : "ASCII"));
 			
 			ReadBoolean(fp, "LORA_ListenOnly", LoRaChannel, 0, &(Config->LoRaDevices[LoRaChannel].ListenOnly));
 			if (Config->LoRaDevices[LoRaChannel].ListenOnly)
@@ -1063,7 +1065,12 @@ void *LoRaLoop(void *some_void_ptr)
 
 					// Telemetry packet
 					
-					if (Config.LoRaDevices[LoRaChannel].Binary)
+					if (Config.LoRaDevices[LoRaChannel].HABPack)
+					{
+						PacketLength = BuildHABpackPacket(Sentence, Channel, GPS);
+						printf("LoRa%d: HABPack %d bytes\n", LoRaChannel, PacketLength);
+					}
+					else if (Config.LoRaDevices[LoRaChannel].Binary)
 					{
 						PacketLength = BuildLoRaPositionPacket(Sentence, LoRaChannel, GPS);
 						printf("LoRa%d: Binary packet %d bytes\n", LoRaChannel, PacketLength);

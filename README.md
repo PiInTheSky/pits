@@ -61,6 +61,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+09/04/2018
+==========
+
+- Added HABPack support for LoRa, using encoder by Phil Crump.  Enable with LORA_HABPack_n=Y
+
 04/02/2018
 ==========
 

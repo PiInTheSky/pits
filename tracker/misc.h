@@ -25,6 +25,7 @@ struct TLoRaDevice
 	int RepeatSlot;
 	int UplinkSlot;
 	int Binary;
+	int HABPack;
 	int LastTxAt;
 	int LastRxAt;
 	int AirCount;
