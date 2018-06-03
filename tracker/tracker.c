@@ -252,7 +252,6 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->cd_area = ReadFloat(fp, "cd_area", -1, 0, 0.66);
 		Config->payload_weight = ReadFloat(fp, "payload_weight", -1, 0, 0.66);
 		Config->TargetAltitude = ReadInteger(fp, "Target_Altitude", -1, 0, 0);
-		Config->LandingAltitude = ReadInteger(fp, "Landing_Altitude", -1, 0, Config->TargetAltitude + 200);
 		ReadString(fp, "prediction_id", -1, Config->PredictionID, sizeof(Config->PredictionID), 0);
 	}
 	

@@ -1,6 +1,6 @@
 // Types
 
-typedef enum {fmIdle, fmLaunched, fmDescending, fmHoming, fmDirect, fmDownwind, fmLanding, fmLanded} TFlightMode;
+typedef enum {fmIdle, fmLaunched, fmDescending, fmHoming, fmDirect, fmDownwind, fmUpwind, fmLanding, fmLanded} TFlightMode;
 
 struct TGPS
 {

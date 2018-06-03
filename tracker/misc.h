@@ -203,7 +203,6 @@ struct TConfig
 	// Landing prediction
 	int EnableLandingPrediction;
 	int32_t TargetAltitude;
-	int32_t LandingAltitude;
 	
 	float cd_area;
 	float payload_weight;
