@@ -608,6 +608,11 @@ int ReadCameraType(FILE *fp, char *keyword)
 		return 3;		// GPHOTO2
 	}
 	
+	if ((*Temp == 'P') || (*Temp == 'p'))
+	{
+		return 4;		// Python script e.g. for GoPro
+	}
+	
 	return 0;
 }
 

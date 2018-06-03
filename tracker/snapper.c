@@ -85,7 +85,7 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 	{
 		while ((ep = readdir (dp)) != NULL)
 		{
-			if (strstr(ep->d_name, ".jpg") != NULL)
+			if (strstr(ep->d_name, ".JPG") != NULL)
 			{
 				if (strchr(ep->d_name, '~') == NULL)
 				{
@@ -116,28 +116,36 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 
 			sprintf(Config.Channels[Channel].ssdv_filename, "ssdv_%d_%d.bin", Channel, Config.Channels[Channel].SSDVFileNumber);
 			
-			// External script for ImageMagick etc.
-			fprintf(fp, "rm -f ssdv.jpg\n");
-			fprintf(fp, "if [ -e process_image ]\n");
-			fprintf(fp, "then\n");
-			fprintf(fp, "	./process_image %d %s %d %d\n", Channel, LargestFileName, width, height);
-			fprintf(fp, "else\n");
-			// Just copy file, unless we're using gphoto2 in which case we need to resize, meaning imagemagick *must* be installed
-			if (Config.Camera == 3)
+			if (Config.Camera == 4)
 			{
-				// resize
-				fprintf(fp, "	convert %s -resize %dx%d ssdv.jpg\n", LargestFileName, width, height);
+				// Just write parameters to file, and leave it to the external script to do the rest
+				fprintf(fp, "%s\n%.6s\n%d\n%s\n%d\n%d\n%s\n", Config.Channels[Channel].PayloadID, Config.SSDVSettings, Config.Channels[Channel].SSDVFileNumber, LargestFileName, width, height, Config.Channels[Channel].ssdv_filename);
 			}
 			else
 			{
-				fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
+				// External script for ImageMagick etc.
+				fprintf(fp, "rm -f ssdv.jpg\n");
+				fprintf(fp, "if [ -e process_image ]\n");
+				fprintf(fp, "then\n");
+				fprintf(fp, "	./process_image %d %s %d %d\n", Channel, LargestFileName, width, height);
+				fprintf(fp, "else\n");
+				// Just copy file, unless we're using gphoto2 in which case we need to resize, meaning imagemagick *must* be installed
+				if (Config.Camera == 3)
+				{
+					// resize
+					fprintf(fp, "	convert %s -resize %dx%d ssdv.jpg\n", LargestFileName, width, height);
+				}
+				else
+				{
+					fprintf(fp, "	cp %s ssdv.jpg\n", LargestFileName);
+				}
+				fprintf(fp, "fi\n");
+				
+				fprintf(fp, "ssdv %s -e -c %.6s -i %d %s %s\n", Config.SSDVSettings, Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
+				fprintf(fp, "mkdir -p %s/$1\n", SSDVFolder);
+				fprintf(fp, "mv %s/*.JPG %s/$1\n", SSDVFolder, SSDVFolder);
+				fprintf(fp, "echo DONE > %s\n", Config.Channels[Channel].ssdv_done);
 			}
-			fprintf(fp, "fi\n");
-			
-			fprintf(fp, "ssdv %s -e -c %.6s -i %d %s %s\n", Config.SSDVSettings, Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
-			fprintf(fp, "mkdir -p %s/$1\n", SSDVFolder);
-			fprintf(fp, "mv %s/*.jpg %s/$1\n", SSDVFolder, SSDVFolder);
-			fprintf(fp, "echo DONE > %s\n", Config.Channels[Channel].ssdv_done);
 			fclose(fp);
 			chmod(Config.Channels[Channel].convert_file, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH); 
 		}
@@ -216,7 +224,7 @@ void *CameraLoop(void *some_void_ptr)
 									// Full size images are saved in dated folder names
 									fprintf(fp, "mkdir -p %s/$2\n", Config.Channels[Channel].SSDVFolder);
 
-									sprintf(FileName, "%s/$2/$1.jpg", Config.Channels[Channel].SSDVFolder);				
+									sprintf(FileName, "%s/$2/$1.JPG", Config.Channels[Channel].SSDVFolder);				
 
 									if (Config.Camera == 3)
 									{
@@ -240,7 +248,7 @@ void *CameraLoop(void *some_void_ptr)
 								}
 								else
 								{
-									sprintf(FileName, "%s/$1.jpg", Config.Channels[Channel].SSDVFolder);
+									sprintf(FileName, "%s/$1.JPG", Config.Channels[Channel].SSDVFolder);
 
 									if (Config.Camera == 3)
 									{
