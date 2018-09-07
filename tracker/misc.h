@@ -11,6 +11,8 @@ struct TLoRaDevice
 	int InUse;
 	int DIO0;
 	int DIO5;
+	int CS;
+	int RST;
 	char Frequency[8];
 	int SpeedMode;
 	int Power;
@@ -168,6 +170,8 @@ struct TConfig
 	int LED_Warn;
 	
 	// GPS Settings
+	int GPSModel;
+	int ShowGPS;
 	int SDA;
 	int SCL;
 	char GPSDevice[64];
@@ -227,6 +231,7 @@ int ReadBoolean(FILE *fp, char *keyword, int Channel, int NeedValue, int *Result
 void ReadString(FILE *fp, char *keyword, int Channel, char *Result, int Length, int NeedValue);
 int ReadCameraType(FILE *fp, char *keyword);
 int ReadInteger(FILE *fp, char *keyword, int Channel, int NeedValue, int DefaultValue);
+char ReadCharacter(FILE *fp, char *keyword);
 double ReadFloat(FILE *fp, char *keyword, int Channel, int NeedValue, double DefaultValue);
 void AppendCRC(char *Temp);
 void LogMessage(const char *format, ...);

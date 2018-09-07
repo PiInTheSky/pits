@@ -262,6 +262,17 @@ void LoadConfigFile(struct TConfig *Config)
 	Config->ExternalDataFileName[0] = '\0';
 	ReadString(fp, "external_data", -1, Config->ExternalDataFileName, sizeof(Config->ExternalDataFileName), 0);
 
+	// GPS model
+	Config->GPSModel = ReadCharacter(fp, "gps_model");
+	if (Config->GPSModel == '\0')
+	{
+		Config->GPSModel = 'U';			// Default UBlox
+	}
+	
+	// Show GPS NMEA ?
+	Config->ShowGPS = 0;
+	ReadBoolean(fp, "show_gps", -1, 0, &(Config->ShowGPS));
+	
 	// Serial GPS
 	Config->GPSDevice[0] = '\0';
 	ReadString(fp, "gps_device", -1, Config->GPSDevice, sizeof(Config->GPSDevice), 0);

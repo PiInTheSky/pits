@@ -616,6 +616,15 @@ int ReadCameraType(FILE *fp, char *keyword)
 	return 0;
 }
 
+char ReadCharacter(FILE *fp, char *keyword)
+{
+	char Temp[8];
+	
+	ReadString(fp, keyword, -1, Temp, sizeof(Temp), 0);
+	
+	return *Temp;
+}
+
 int ReadBoolean(FILE *fp, char *keyword, int Channel, int NeedValue, int *Result)
 {
 	char Temp[32];

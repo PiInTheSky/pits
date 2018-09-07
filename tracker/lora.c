@@ -68,13 +68,26 @@ struct TLoRaMode
 
 int Records, FileNumber;
 
+void SetCS(int LoRaChannel, int Value)
+{
+	if (Config.LoRaDevices[LoRaChannel].CS > 0)
+	{
+		digitalWrite(Config.LoRaDevices[LoRaChannel].CS, Value);
+	}
+}
+
 void writeRegister(int Channel, uint8_t reg, uint8_t val)
 {
 	unsigned char data[2];
 	
 	data[0] = reg | 0x80;
 	data[1] = val;
+
+	SetCS(Channel, 0);
+	
 	wiringPiSPIDataRW(Channel, data, 2);
+	
+	SetCS(Channel, 1);
 }
 
 uint8_t readRegister(int Channel, uint8_t reg)
@@ -84,7 +97,13 @@ uint8_t readRegister(int Channel, uint8_t reg)
 	
 	data[0] = reg & 0x7F;
 	data[1] = 0;
+
+	SetCS(Channel, 0);
+
 	wiringPiSPIDataRW(Channel, data, 2);
+
+	SetCS(Channel, 1);
+	
 	val = data[1];
 
     return val;
@@ -122,11 +141,16 @@ void setMode(int LoRaChannel, uint8_t newMode)
   
 	if(newMode != RF98_MODE_SLEEP)
 	{
-		// printf("Waiting for Mode Change\n");
-		while(digitalRead(Config.LoRaDevices[LoRaChannel].DIO5) == 0)
+		if (Config.LoRaDevices[LoRaChannel].DIO5 > 0)
 		{
-		} 
-		// printf("Mode change completed\n");
+			while(digitalRead(Config.LoRaDevices[LoRaChannel].DIO5) == 0)
+			{
+			} 
+		}
+		else
+		{
+			delay(10);
+		}
 	}
 	
 	return;
@@ -180,9 +204,21 @@ void setupRFM98(int LoRaChannel)
 	if (Config.LoRaDevices[LoRaChannel].InUse)
 	{
 		// initialize the pins
-		printf("LoRa channel %d DIO0=%d DIO5=%d\n", LoRaChannel, Config.LoRaDevices[LoRaChannel].DIO0, Config.LoRaDevices[LoRaChannel].DIO5);
+		printf("LoRa channel %d DIO0=%d DIO5=%d, CS=%d\n", LoRaChannel, Config.LoRaDevices[LoRaChannel].DIO0, Config.LoRaDevices[LoRaChannel].DIO5, Config.LoRaDevices[LoRaChannel].CS);
 		pinMode(Config.LoRaDevices[LoRaChannel].DIO0, INPUT);
-		pinMode(Config.LoRaDevices[LoRaChannel].DIO5, INPUT);
+		if (Config.LoRaDevices[LoRaChannel].DIO5 > 0)
+		{
+			pinMode(Config.LoRaDevices[LoRaChannel].DIO5, INPUT);
+		}
+		if (Config.LoRaDevices[LoRaChannel].CS > 0)
+		{
+			pinMode(Config.LoRaDevices[LoRaChannel].CS, OUTPUT);
+		}
+		if (Config.LoRaDevices[LoRaChannel].CS >= 0)
+		{
+			pinMode(Config.LoRaDevices[LoRaChannel].RST, OUTPUT);
+			digitalWrite(Config.LoRaDevices[LoRaChannel].RST, 1);
+		}
 
 		if (wiringPiSPISetup(LoRaChannel, 500000) < 0)
 		{
@@ -227,9 +263,12 @@ void SendLoRaData(int LoRaChannel, unsigned char *buffer, int Length)
 	{
 		data[i+1] = buffer[i];
 	}
+
+	SetCS(LoRaChannel, 0);
+	
 	wiringPiSPIDataRW(LoRaChannel, data, Length+1);
 
-// printf("Set Tx Mode\n");
+	SetCS(LoRaChannel, 1);
 
 	// Set the length. For implicit mode, since the length needs to match what the receiver expects, we have to set a value which is 255 for an SSDV packet
 	writeRegister(LoRaChannel, REG_PAYLOAD_LENGTH, Config.LoRaDevices[LoRaChannel].PayloadLength ? Config.LoRaDevices[LoRaChannel].PayloadLength : Length);
@@ -501,7 +540,13 @@ int receiveMessage(int LoRaChannel, unsigned char *message)
 		writeRegister(LoRaChannel, REG_FIFO_ADDR_PTR, currentAddr);   
 		
 		data[0] = REG_FIFO;
+		
+		SetCS(LoRaChannel, 0);
+		
 		wiringPiSPIDataRW(LoRaChannel, data, Bytes+1);
+
+		SetCS(LoRaChannel, 1);
+		
 		for (i=0; i<=Bytes; i++)
 		{
 			message[i] = data[i+1];
@@ -656,7 +701,7 @@ int CheckForFreeChannel(struct TGPS *GPS)
 		{
 			if ((Config.LoRaDevices[LoRaChannel].LoRaMode != lmSending) || digitalRead(Config.LoRaDevices[LoRaChannel].DIO0))
 			{
-				// printf ("LoRa Channel %d is free\n", Channel);
+				// printf ("LoRa Channel %d is free\n", LoRaChannel);
 				// Either not sending, or was but now it's sent.  Clear the flag if we need to
 				if (Config.LoRaDevices[LoRaChannel].LoRaMode == lmSending)
 				{
@@ -781,7 +826,20 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 			Config->LoRaDevices[LoRaChannel].DIO0 = ReadInteger(fp, "LORA_DIO0", LoRaChannel, 0, Config->LoRaDevices[LoRaChannel].DIO0);
 			Config->LoRaDevices[LoRaChannel].DIO5 = ReadInteger(fp, "LORA_DIO5", LoRaChannel, 0, Config->LoRaDevices[LoRaChannel].DIO5);
 			printf("      - DIO0=%d DIO5=%d\n", Config->LoRaDevices[LoRaChannel].DIO0, Config->LoRaDevices[LoRaChannel].DIO5);
-			
+
+			// CS for those stupid boards that don't use standard Pi CS pins ...
+			Config->LoRaDevices[LoRaChannel].CS = ReadInteger(fp, "LORA_CS", LoRaChannel, 0, 0);
+			if (Config->LoRaDevices[LoRaChannel].CS > 0)
+			{
+				printf("      - **NON STANDARD** CS pin %d\n", Config->LoRaDevices[LoRaChannel].CS);
+			}
+
+			Config->LoRaDevices[LoRaChannel].RST = ReadInteger(fp, "LORA_RST", LoRaChannel, 0, -1);
+			if (Config->LoRaDevices[LoRaChannel].RST >= 0)
+			{
+				printf("      - RST pin %d\n", Config->LoRaDevices[LoRaChannel].RST);
+			}
+
 			if (Config->Camera)
 			{
 				Config->Channels[Channel].ImageWidthWhenLow = ReadInteger(fp, "LORA_low_width", LoRaChannel, 0, 320);
