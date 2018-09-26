@@ -1,11 +1,21 @@
 #define REG_FIFO                    0x00
+#define REG_BITRATE_MSB    			0x02
+#define REG_BITRATE_LSB    			0x03
+#define REG_FDEV_MSB                0x04
+#define REG_FDEV_LSB                0x05
+#define REG_FRF_MSB                 0x06
+#define REG_FRF_MID                 0x07
+#define REG_FRF_LSB                 0x08
 #define REG_FIFO_ADDR_PTR           0x0D 
 #define REG_FIFO_TX_BASE_AD         0x0E
 #define REG_FIFO_RX_BASE_AD         0x0F
 #define REG_RX_NB_BYTES             0x13
 #define REG_OPMODE                  0x01
 #define REG_FIFO_RX_CURRENT_ADDR    0x10
+#define REG_IRQ_FLAGS_MASK          0x11
 #define REG_IRQ_FLAGS               0x12
+#define REG_IRQ_FLAGS1              0x3E
+#define REG_IRQ_FLAGS2              0x3F
 #define REG_PACKET_SNR				0x19
 #define REG_PACKET_RSSI				0x1A
 #define REG_CURRENT_RSSI			0x1B
@@ -15,11 +25,16 @@
 #define REG_MODEM_CONFIG2           0x1E
 #define REG_MODEM_CONFIG3           0x26
 #define REG_PAYLOAD_LENGTH          0x22
-#define REG_IRQ_FLAGS_MASK          0x11
 #define REG_HOP_PERIOD              0x24
 #define REG_FREQ_ERROR				0x28
 #define REG_DETECT_OPT				0x31
 #define	REG_DETECTION_THRESHOLD		0x37
+#define REG_PREAMBLE_MSB_FSK 		0x25
+#define REG_PREAMBLE_LSB_FSK 		0x26
+#define REG_SYNC_CONFIG             0x27
+#define REG_PACKET_CONFIG1	  		0x30
+#define REG_PAYLOAD_LENGTH_FSK      0x32
+#define REG_FIFO_THRESH             0x35
 
 // MODES
 #define RF98_MODE_RX_CONTINUOUS     0x85

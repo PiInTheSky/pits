@@ -14,6 +14,7 @@ struct TLoRaDevice
 	int CS;
 	int RST;
 	char Frequency[8];
+    float PPM;
 	int SpeedMode;
 	int Power;
 	int PayloadLength;
@@ -40,6 +41,7 @@ struct TLoRaDevice
 	int UplinkRepeatLength;
 	int SendRepeatedPacket;
 	tLoRaMode LoRaMode;
+    int SendingRTTY;
 	char CallingFrequency[8];
 	int CallingCount;
 	int PacketsSinceLastCall;
@@ -66,6 +68,23 @@ struct TLoRaDevice
 	int LastPacketSNR;
 	int PacketCount;
 	int ListenOnly;					// True for listen-only payload that waits for an uplink before responding (or times out and sends anyway)
+    
+    // RTTY settings
+    int RTTYBaudRate;
+    double RTTYFrequency;
+    int RTTYShift;
+    int RTTYCount;
+    int RTTYEvery;
+    int RTTYPacketIndex;
+    int RTTYBitLength;
+    int InRTTYMode;
+    unsigned int FSKBitRate;
+    int FSKOverSample;
+	char RTTYBuffer[256];
+    int RTTYIndex;
+    int RTTYMask;
+    int RTTYLength;
+    int RTTYPreamble;
 	
 #	ifdef EXTRAS_PRESENT
 #		include "ex_misc_lora.h"

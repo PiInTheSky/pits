@@ -732,22 +732,15 @@ int prog_count(char* name)
 
 void LogMessage(const char *format, ...)
 {
-	#define MAX_LEN 180
-	char Buffer[300];
+	#define MAX_LEN 300
+	char Buffer[MAX_LEN];
 	
     va_list args;
     va_start(args, format);
 
-    vsprintf(Buffer, format, args);
+    vsnprintf(Buffer, MAX_LEN, format, args);
 
     va_end(args);
-
-	// if (strlen(Buffer) > MAX_LEN)
-	// {
-		// Buffer[MAX_LEN-2] = '.';
-		// Buffer[MAX_LEN-1] = '.';
-		// Buffer[MAX_LEN] = 0;
-	// }
 
 	if (Buffer[strlen(Buffer)-1] == '\n')
 	{

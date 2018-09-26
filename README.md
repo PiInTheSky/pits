@@ -12,6 +12,29 @@ Software support is provided for customers who have purchased a PITS, PITS Zero 
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
+## RTTY through LoRa ##
+
+To understand the settings, first take note that PITS has a concept of "radio channels" where a channel is a particular radio transmitter not mode (RTTY or LoRa).  We are using one of the LoRa devices (channels) to transmit RTTY.  So our settings are associated with the particular LoRa module (in CE0 or CE1 position).  Essentially we are overriding the normal LoRa functionality by telling the software to transmitt RTTY as well as or instead of the LoRa packets.
+
+These are the new settings (shown for channel 0)
+
+
+- LORA\_RTTY\_Frequency_0=<RTTY Frequency\>.  Without this, RTTY will use the same frequency as LoRa.  I recommend that you keep the frequencies apart so that your RTTY receiving software does not try to track the LoRa trransmissions.
+- LORA\_RTTY\_Baud_0=<baud rate\>.  Choose 50 (better range) or 300 (faster, allows for SSDV, easier for dl-fldigi to lock to).
+- LORA\_RTTY\_Shift_0=<carrier shift in Hz\>.  The carrier shift must be numerically greater than the baud rate.  Note that the LoRa chip steps in multiples of 30.5Hz.
+- LORA\_RTTY\_Count_0=<count\>.  This is how many RTTY packets are sent one after the other before transmitting any LoRa packets.  2 is recommended in case the RTTY decoder misses the start of the first packet.
+- LORA\_RTTY\_Every_0=<count\>.  This is how many LoRa packets are sent one after the other before transmitting any RTTY packets.  Set to zero to disable LoRa (and only send RTTY).
+- LORA\_RTTY\_Preamble_0=<bits\>.  Sets the length of preamble (constant carrier) before sending RTTY data.  Default is 8 and seems to be plenty.
+
+Example:
+
+	LORA_RTTY_Frequency_0=434.350
+	LORA_RTTY_Baud_0=300
+	LORA_RTTY_Shift_0=610
+	LORA_RTTY_Count_0=2
+	LORA_RTTY_Every_0=12
+	LORA_RTTY_Preamble_0=8
+
 
 ## USB Camera ##
 
@@ -60,6 +83,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 
 ## Change Log ##
+
+26/09/2018
+==========
+
+- Added support for RTTY via LoRa module
 
 09/04/2018
 ==========
