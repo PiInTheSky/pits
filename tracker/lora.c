@@ -1213,7 +1213,7 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 			Config->LoRaDevices[LoRaChannel].InRTTYMode = -1;		
 			
 #			ifdef EXTRAS_PRESENT
-//				LoadExtraLoRaConfig(fp, Config, LoRaChannel);
+				LoadExtraLoRaConfig(fp, Config, LoRaChannel);
 #			endif	
 		}
 		else
@@ -1401,10 +1401,10 @@ void *LoRaLoop(void *some_void_ptr)
 						printf("LoRa%d: Binary packet %d bytes\n", LoRaChannel, PacketLength);
 					}
 #					ifdef EXTRAS_PRESENT
-//					else if (TimeForCustomLoRaPacket(&Config, LoRaChannel))
-					// {
-						// PacketLength = BuildCustomLoRaPacket(Sentence, LoRaChannel, GPS);
-					// }
+					else if (TimeForCustomLoRaPacket(&Config, LoRaChannel))
+					{
+						PacketLength = BuildCustomLoRaPacket(Sentence, LoRaChannel, GPS);
+					}
 #					endif	
 					else
 					{
