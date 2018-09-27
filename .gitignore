@@ -5,7 +5,7 @@ tracker/tracker
 tracker/download
 tracker/keep
 tracker/ssdv_done_*
-tracker/coonvert_*
+tracker/convert_*
 tracker/tweets.log
 tracker/webstuff.py
 tracker/batc
@@ -18,6 +18,7 @@ tracker/ex_*
 *.old
 telemetry.txt
 gps.txt
+prediction.txt
 take*
 convert*
 *.bin
