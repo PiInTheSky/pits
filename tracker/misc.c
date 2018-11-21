@@ -816,6 +816,11 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 		sprintf(ExtraFields2, ",%.1f,%.0f,%0.1f", GPS->BMP180Temperature, GPS->Pressure, GPS->Humidity);
 		if (ShowFields) printf(",BME.Temp,Pressure,Humidity");
 	}
+	else if (Config.EnableMS5611)
+	{
+		sprintf(ExtraFields2, ",%.1f,%.1f", GPS->BMP180Temperature, GPS->Pressure);
+		if (ShowFields) printf(",BMP.Temp,Pressure");
+	}
 	else if (Config.EnableBMP085)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);

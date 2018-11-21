@@ -12,6 +12,17 @@ Software support is provided for customers who have purchased a PITS, PITS Zero 
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
+## Additional Sensors ##
+
+You can enable any **one** of these supported sensor devices using these lines in pisky.txt:
+
+	Enable_BME280=Y
+	Enable_MS5611=Y
+	Enable_BMP085=Y
+
+All of them measure pressure and temperature; the BME280 also measures humidity.
+ 
+
 ## RTTY through LoRa ##
 
 To understand the settings, first take note that PITS has a concept of "radio channels" where a channel is a particular radio transmitter not mode (RTTY or LoRa).  We are using one of the LoRa devices (channels) to transmit RTTY.  So our settings are associated with the particular LoRa module (in CE0 or CE1 position).  Essentially we are overriding the normal LoRa functionality by telling the software to transmitt RTTY as well as or instead of the LoRa packets.
@@ -83,6 +94,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 
 ## Change Log ##
+
+21/11/2018
+==========
+
+- Added support for MS5611 Pressure/Temperature Sensor
 
 26/09/2018
 ==========
@@ -250,7 +266,12 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 - Added support for second (external) DS18B20 temperature sensor
 - Fix to occassional missing packets
 - Support for Pi V2 B
-- Protect against BMP085/180 being disconnected after initialisation
+- Protect against 
+- 
+- 
+- 
+- 
+- 085/180 being disconnected after initialisation
 
 19/12/2014
 

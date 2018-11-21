@@ -48,6 +48,7 @@
 #include "led.h"
 #include "bmp085.h"
 #include "bme280.h"
+#include "MS5611.h"
 #include "aprs.h"
 #include "lora.h"
 #include "pipe.h"
@@ -166,6 +167,12 @@ void LoadConfigFile(struct TConfig *Config)
 	if (Config->EnableBME280)
 	{
 		printf("BME280 Enabled\n");
+	}
+
+	ReadBoolean(fp, "enable_ms5611", -1, 0, &(Config->EnableMS5611));
+	if (Config->EnableMS5611)
+	{
+		printf("MS5611 Enabled\n");
 	}
 
 	ReadString(fp, "pipe_payload", -1, Config->Channels[PIPE_CHANNEL].PayloadID, sizeof(Config->Channels[PIPE_CHANNEL].PayloadID), 0);
@@ -631,7 +638,7 @@ int main(void)
 	unsigned char Sentence[200];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, LEDThread, LogThread, PipeThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, MS5611Thread, LEDThread, LogThread, PipeThread;
 	if (prog_count("tracker") > 1)
 	
 	{
@@ -909,7 +916,16 @@ int main(void)
 			return 1;
 		}
 	}
-	
+		
+	if (Config.EnableMS5611)
+	{
+		if (pthread_create(&MS5611Thread, NULL, MS5611Loop, &GPS))
+		{
+			fprintf(stderr, "Error creating MS5611 thread\n");
+			return 1;
+		}
+	}
+		
 	if (Config.Channels[PIPE_CHANNEL].PayloadID[0])
 	{
 		if (pthread_create(&PipeThread, NULL, PipeLoop, &GPS))
