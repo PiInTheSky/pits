@@ -592,6 +592,8 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						if (GPS->Altitude > GPS->MaximumAltitude)
 						{
 							GPS->MaximumAltitude = GPS->Altitude;
+							GPS->BurstLatitude = GPS->Latitude;
+							GPS->BurstLongitude = GPS->Longitude;
 						}
 						if ((GPS->Altitude < GPS->MinimumAltitude) || (GPS->MinimumAltitude == 0))
 						{

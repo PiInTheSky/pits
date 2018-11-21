@@ -94,11 +94,9 @@ void *PredictionLoop(void *some_void_ptr)
 	{
 		sleep(POLL_PERIOD);
 				
-		if (GPS->Satellites >= 4)
+		if ((GPS->Satellites >= 4) && (GPS->Latitude >= -90) && (GPS->Latitude <= 90) && (GPS->Longitude >= -180) && (GPS->Longitude <= 180))
 		{
 			int Slot;
-			double Latitude, Longitude, TimeInSlot, DescentRate, TimeTillLanding;
-			unsigned long Altitude, DistanceInSlot;
 			char Temp[200];
 			
 			if ((GPS->FlightMode >= fmLaunched) && (GPS->FlightMode < fmLanded))
@@ -126,42 +124,12 @@ void *PredictionLoop(void *some_void_ptr)
 
 				}
 				
+				
 				// Estimate landing position
-				Altitude = GPS->Altitude;
-				Latitude = GPS->Latitude;
-				Longitude = GPS->Longitude;
-				TimeTillLanding = 0;
-				
-				Slot = GetSlot(Altitude);
-				DistanceInSlot = Altitude + 1 - (Slot * SLOTSIZE);
-				
-				while (Altitude > Config.TargetAltitude)
-				{
-					Slot = GetSlot(Altitude);
-					
-					if (Slot == GetSlot(Config.TargetAltitude))
-					{
-						DistanceInSlot = Altitude - Config.TargetAltitude;
-					}
-					
-					DescentRate = CalculateDescentRate(Config.payload_weight, GPS->CDA, Altitude);
-					TimeInSlot = DistanceInSlot / DescentRate;
-					
-					Latitude += Positions[Slot].LatitudeDelta * TimeInSlot;
-					Longitude += Positions[Slot].LongitudeDelta * TimeInSlot;
-					
-					// printf("SLOT %d: alt %lu, lat=%lf, long=%lf, rate=%lf, dist=%lu, time=%lf\n", Slot, Altitude, Latitude, Longitude, DescentRate, DistanceInSlot, TimeInSlot);
-					
-					TimeTillLanding = TimeTillLanding + TimeInSlot;
-					Altitude -= DistanceInSlot;
-					DistanceInSlot = SLOTSIZE;
-				}
-							
-				GPS->PredictedLatitude = Latitude;
-				GPS->PredictedLongitude = Longitude;
+				GPS->TimeTillLanding = CalculateLandingPosition(GPS, GPS->Latitude, GPS->Longitude, GPS->Altitude, &(GPS->PredictedLatitude), &(GPS->PredictedLongitude));
+
 				GPS->PredictedLandingSpeed = CalculateDescentRate(Config.payload_weight, GPS->CDA, Config.TargetAltitude);
-				GPS->TimeTillLanding = TimeTillLanding;
-								
+				
 				printf("Expected Descent Rate = %4.1lf (now) %3.1lf (landing), time till landing %d\n", 
 						CalculateDescentRate(Config.payload_weight, GPS->CDA, GPS->Altitude),
 						GPS->PredictedLandingSpeed,
@@ -188,3 +156,42 @@ void *PredictionLoop(void *some_void_ptr)
 	return 0;
 }
 
+
+int CalculateLandingPosition(struct TGPS *GPS, double Latitude, double Longitude, int32_t Altitude, double *PredictedLatitude, double *PredictedLongitude)
+{
+	double TimeTillLanding, TimeInSlot, DescentRate;
+	int Slot;
+	int32_t DistanceInSlot;
+	
+	TimeTillLanding = 0;
+	
+	Slot = GetSlot(Altitude);
+	DistanceInSlot = Altitude + 1 - (Slot * SLOTSIZE);
+	
+	while (Altitude > Config.TargetAltitude)
+	{
+		Slot = GetSlot(Altitude);
+		
+		if (Slot == GetSlot(Config.TargetAltitude))
+		{
+			DistanceInSlot = Altitude - Config.TargetAltitude;
+		}
+		
+		DescentRate = CalculateDescentRate(Config.payload_weight, GPS->CDA, Altitude);
+		TimeInSlot = DistanceInSlot / DescentRate;
+		
+		Latitude += Positions[Slot].LatitudeDelta * TimeInSlot;
+		Longitude += Positions[Slot].LongitudeDelta * TimeInSlot;
+		
+		// printf("SLOT %d: alt %lu, lat=%lf, long=%lf, rate=%lf, dist=%lu, time=%lf\n", Slot, Altitude, Latitude, Longitude, DescentRate, DistanceInSlot, TimeInSlot);
+		
+		TimeTillLanding = TimeTillLanding + TimeInSlot;
+		Altitude -= DistanceInSlot;
+		DistanceInSlot = SLOTSIZE;
+	}
+				
+	*PredictedLatitude = Latitude;
+	*PredictedLongitude = Longitude;
+	
+	return TimeTillLanding;	
+}

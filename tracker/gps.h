@@ -7,7 +7,7 @@ struct TGPS
 	// GPS
 	long SecondsInDay;					// Time in seconds since midnight
 	int Hours, Minutes, Seconds;
-	float Longitude, Latitude;
+	double Longitude, Latitude;
 	int32_t Altitude;
 	unsigned int Satellites;
 	int Speed;
@@ -16,6 +16,7 @@ struct TGPS
 	
 	// Calculated from GPS
 	int32_t MaximumAltitude, MinimumAltitude;
+    double BurstLatitude, BurstLongitude;
 	float AscentRate;
 	
 	// Sensors
@@ -31,7 +32,7 @@ struct TGPS
 	TFlightMode FlightMode;
 	
 	// Prediction
-	float PredictedLongitude, PredictedLatitude;
+	double PredictedLongitude, PredictedLatitude;
 	float PredictedLandingSpeed;
 	int TimeTillLanding;
 	float CDA;

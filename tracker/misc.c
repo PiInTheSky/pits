@@ -787,7 +787,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	
 	ExtraFields7 = "";
 	
-	if (ShowFields) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Sped,Head,Sats,Int.Temp", Channels[Channel]);
+	if (ShowFields) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Speed,Head,Sats,Int.Temp", Channels[Channel]);
 	
 	
 	// Battery voltage and current, if available
@@ -856,7 +856,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 
 		if (Config.LoRaDevices[LoRaChannel].EnableMessageStatus)
 		{	
-			sprintf(ExtraFields6, ",%s", Config.LoRaDevices[LoRaChannel].LastCommand);
+			sprintf(ExtraFields6, ",%c", Config.LoRaDevices[LoRaChannel].LastCommand[0]);
 			if (ShowFields) printf(",Command");
 		}
 		

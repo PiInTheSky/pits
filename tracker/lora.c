@@ -167,7 +167,7 @@ void SetLoRaFrequency(int LoRaChannel, double Frequency)
 
 	FrequencyValue = (unsigned long)(Frequency * (1.0 - Config.LoRaDevices[LoRaChannel].PPM/1000000.0) * 7110656 / 434);
 	
-	// printf("Channel %d frequency %lf FrequencyValue = %06lXh\n", LoRaChannel, Frequency, FrequencyValue);
+	printf("Channel %d frequency %lf FrequencyValue = %06lXh\n", LoRaChannel, Frequency, FrequencyValue);
 	
 	writeRegister(LoRaChannel, REG_FRF_MSB, (FrequencyValue >> 16) & 0xFF);		// Set frequency
 	writeRegister(LoRaChannel, REG_FRF_MID, (FrequencyValue >> 8) & 0xFF);
@@ -545,24 +545,35 @@ int TDMTimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 			if (CycleSeconds == Config.LoRaDevices[LoRaChannel].Slot)
 			{
 				Config.LoRaDevices[LoRaChannel].LastTxAt = GPS->SecondsInDay;
-				Config.LoRaDevices[LoRaChannel].SendRepeatedPacket = 0;
+				Config.LoRaDevices[LoRaChannel].SendPacketType = ptNormal;
 				return 1;
 			}
 
 			if (Config.LoRaDevices[LoRaChannel].PacketRepeatLength && (CycleSeconds == Config.LoRaDevices[LoRaChannel].RepeatSlot))
 			{
 				Config.LoRaDevices[LoRaChannel].LastTxAt = GPS->SecondsInDay;
-				Config.LoRaDevices[LoRaChannel].SendRepeatedPacket = 1;
+				Config.LoRaDevices[LoRaChannel].SendPacketType = ptBalloonRepeat;
 				return 1;
 			}
 			
 			if (Config.LoRaDevices[LoRaChannel].UplinkRepeatLength && (CycleSeconds == Config.LoRaDevices[LoRaChannel].UplinkSlot))
 			{
 				Config.LoRaDevices[LoRaChannel].LastTxAt = GPS->SecondsInDay;
-				Config.LoRaDevices[LoRaChannel].SendRepeatedPacket = 2;
+				Config.LoRaDevices[LoRaChannel].SendPacketType = ptUplinkRepeat;
 				return 1;
 			}
 			
+			if (CycleSeconds == Config.LoRaDevices[LoRaChannel].CallingSlot)
+			{
+				if (Config.LoRaDevices[LoRaChannel].CallingFrequency[0] &&
+				    Config.LoRaDevices[LoRaChannel].CallingCount &&
+					(Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall >= Config.LoRaDevices[LoRaChannel].CallingCount))
+				{
+					Config.LoRaDevices[LoRaChannel].LastTxAt = GPS->SecondsInDay;
+					Config.LoRaDevices[LoRaChannel].SendPacketType = ptCallingMode;
+					return 1;
+				}
+			}
 		}
 	}
 	
@@ -1178,6 +1189,11 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				if (Config->LoRaDevices[LoRaChannel].CallingCount)
 				{
 					printf("      - Calling Packet will be sent on %s every %d packets\n", Config->LoRaDevices[LoRaChannel].CallingFrequency, Config->LoRaDevices[LoRaChannel].CallingCount);
+					Config->LoRaDevices[LoRaChannel].CallingSlot = ReadInteger(fp, "LORA_Calling_Slot", LoRaChannel, 0, -1);
+					if (Config->LoRaDevices[LoRaChannel].CallingSlot >= 0)
+					{
+						printf("      - Calling Packet will be sent in slot %d\n", Config->LoRaDevices[LoRaChannel].CallingSlot);
+					}
 				}
 			}
 
@@ -1305,16 +1321,24 @@ void *LoRaLoop(void *some_void_ptr)
 								  Config.LoRaDevices[LoRaChannel].LowDataRateOptimize);
 				printf("Reset after Uplink Mode\n");
 			}
-			
-			// Now decide what, if anything, to send
 
+			// Calling mode needed ?
+			if ((Config.LoRaDevices[LoRaChannel].CycleTime <= 0) &&
+			    Config.LoRaDevices[LoRaChannel].CallingFrequency[0] &&
+				Config.LoRaDevices[LoRaChannel].CallingCount &&
+				(Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall >= Config.LoRaDevices[LoRaChannel].CallingCount))
+			{
+				Config.LoRaDevices[LoRaChannel].SendPacketType = ptCallingMode;
+			}
+
+			// Now decide what, if anything, to send
 			// Handle deliberate delays between packets
 			if ((Config.LoRaDevices[LoRaChannel].PacketEveryMilliSeconds > 0) && ((Config.LoRaDevices[LoRaChannel].MillisSinceLastPacket += LoopMS) < Config.LoRaDevices[LoRaChannel].PacketEveryMilliSeconds))
 			{
 				// Deliberate delay, and we're not there yet
 				// DO NOTHING!
 			}			
-			else if (Config.LoRaDevices[LoRaChannel].SendRepeatedPacket == 2)
+			else if (Config.LoRaDevices[LoRaChannel].SendPacketType == ptUplinkRepeat)
 			{
 				printf("Repeating uplink packet of %d bytes\n", Config.LoRaDevices[LoRaChannel].UplinkRepeatLength);
 				
@@ -1322,7 +1346,7 @@ void *LoRaLoop(void *some_void_ptr)
 				
 				Config.LoRaDevices[LoRaChannel].UplinkRepeatLength = 0;
 			}
-			else if (Config.LoRaDevices[LoRaChannel].SendRepeatedPacket == 1)
+			else if (Config.LoRaDevices[LoRaChannel].SendPacketType == ptBalloonRepeat)
 			{
 				printf("Repeating balloon packet of %d bytes\n", Config.LoRaDevices[LoRaChannel].PacketRepeatLength);
 				
@@ -1330,9 +1354,7 @@ void *LoRaLoop(void *some_void_ptr)
 				
 				Config.LoRaDevices[LoRaChannel].PacketRepeatLength = 0;
 			}
-			else if (Config.LoRaDevices[LoRaChannel].CallingFrequency[0] &&
-					 Config.LoRaDevices[LoRaChannel].CallingCount &&
-					 (Config.LoRaDevices[LoRaChannel].PacketsSinceLastCall >= Config.LoRaDevices[LoRaChannel].CallingCount))
+			else if (Config.LoRaDevices[LoRaChannel].SendPacketType == ptCallingMode)
 			{
 				int PacketLength;
 				double Frequency;

@@ -6,6 +6,8 @@
 
 typedef enum {lmIdle, lmListening, lmSending} tLoRaMode;
 
+typedef enum {ptNormal, ptCallingMode, ptBalloonRepeat, ptUplinkRepeat} tPacketType;
+
 struct TLoRaDevice
 {
 	int InUse;
@@ -39,11 +41,12 @@ struct TLoRaDevice
 	unsigned char UplinkPacket[256];
 	int PacketRepeatLength;
 	int UplinkRepeatLength;
-	int SendRepeatedPacket;
+	tPacketType SendPacketType;
 	tLoRaMode LoRaMode;
     int SendingRTTY;
 	char CallingFrequency[8];
 	int CallingCount;
+    int CallingSlot;
 	int PacketsSinceLastCall;
 	int ReturnStateAfterCall;
 	

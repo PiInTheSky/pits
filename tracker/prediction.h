@@ -11,3 +11,4 @@ struct TPosition
 
 void *PredictionLoop(void *some_void_ptr);
 int GetSlot(int32_t Altitude);
+int CalculateLandingPosition(struct TGPS *GPS, double Latitude, double Longitude, int32_t Altitude, double *PredictedLatitude, double *PredictedLongitude);
