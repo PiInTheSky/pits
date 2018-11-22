@@ -237,6 +237,9 @@ struct TConfig
 	
 	// External data file (read into telemetry)
 	char ExternalDataFileName[100];
+    
+    int BlinkenLight;
+    int FlashBelow;
 	
 #	ifdef EXTRAS_PRESENT
 #		include "ex_misc_config.h"
@@ -269,3 +272,5 @@ int GetBoardType(int *i2cChannel);
 int NoMoreSSDVPacketsToSend(int Channel);
 int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS);
 int FixDirection180(int Angle);
+void SetupPWMFrequency(int Pin, int Frequency);
+void ControlPWMOutput(int Pin, int Period);

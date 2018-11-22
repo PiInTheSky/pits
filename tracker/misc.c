@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
+#include <pigpio.h> 
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
@@ -983,3 +984,17 @@ int FixDirection180(int Angle)
 	
 	return Angle;
 }
+
+void SetupPWMFrequency(int Pin, int Frequency)
+{
+//	return softPwmCreate(Pin, 0, 100);
+	gpioSetPWMfrequency(Pin, Frequency);
+	// gpioServo(18, 2000);
+}
+
+void ControlPWMOutput(int Pin, int Period)
+{
+//	softPwmWrite (Pin, Level);
+	gpioServo(Pin, Period);
+}
+

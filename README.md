@@ -12,6 +12,21 @@ Software support is provided for customers who have purchased a PITS, PITS Zero 
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
+## Strobon LED strobe light ##
+
+These are **very** bright LED strobe lights made for RC models.  You can power them from the Pi 5V and 0V lines; note that they do pull 1A for 20ms for each flash, which might cause issues depending on the power supply; if in doubt add some capacitance at the strobe.
+
+The LED uses a PWM input to control its mode.  Choose any free pin, e.g. **BCM** pin 18 which is only used if you have an APRS board.  Configure as follows, being careful to use BCM pin numbers and **not** WiringPi pin numbers:
+ 
+
+	Strobe_Pin=18
+	Strobe_Alt=1000
+
+For the above settings, the strobe light will come on during flight once the payload descends below 1000m.
+
+Both V1 and V2 Strobons have been tested to work fine.  PITS controls the LED by using a standard 50Hz PWM signal set with 1ms pulse for off and 2ms for on.  Note that when powered up, the V2 model strobes until PITS starts; the V1 starts up as off.
+
+
 ## Additional Sensors ##
 
 You can enable any **one** of these supported sensor devices using these lines in pisky.txt:
@@ -25,7 +40,7 @@ All of them measure pressure and temperature; the BME280 also measures humidity.
 
 ## RTTY through LoRa ##
 
-To understand the settings, first take note that PITS has a concept of "radio channels" where a channel is a particular radio transmitter not mode (RTTY or LoRa).  We are using one of the LoRa devices (channels) to transmit RTTY.  So our settings are associated with the particular LoRa module (in CE0 or CE1 position).  Essentially we are overriding the normal LoRa functionality by telling the software to transmitt RTTY as well as or instead of the LoRa packets.
+To understand the settings, first take note that PITS has a concept of "radio channels" where a channel is a particular radio transmitter not mode (RTTY or LoRa).  We are using one of the LoRa devices (channels) to transmit RTTY.  So our settings are associated with the particular LoRa module (in CE0 or CE1 position).  Essentially we are overriding the normal LoRa functionality by telling the software to transmit RTTY as well as or instead of the LoRa packets.
 
 These are the new settings (shown for channel 0)
 
@@ -94,6 +109,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 
 ## Change Log ##
+
+22/11/2018
+==========
+
+- Added support for Strobon V1 and V2 PWM-controlled LED strobe lights
 
 21/11/2018
 ==========

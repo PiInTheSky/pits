@@ -304,6 +304,15 @@ void LoadConfigFile(struct TConfig *Config)
 
 	Config->QuietRTTYDuringLoRaUplink = 0;
 	ReadBoolean(fp, "quiet_rtty_for_uplink", -1, 0, &(Config->QuietRTTYDuringLoRaUplink));
+	
+	Config->BlinkenLight = ReadInteger(fp, "Strobe_Pin", -1, 0, -1);
+	if (Config->BlinkenLight >= 0)
+	{
+		Config->FlashBelow = ReadInteger(fp, "Strobe_Alt", -1, 0, Config->SSDVHigh);
+
+		printf("Enabled PCM Strobe Light on pin %d after descending below %d metres\n", Config->BlinkenLight, Config->FlashBelow);
+	}
+	
 
 	LoadAPRSConfig(fp, Config);
 	
@@ -341,12 +350,6 @@ void SetMTX2Frequency(char *FrequencyString)
 	snprintf(_mtx2command,17,"@PRG_%02X%06lX\r",_mtx2int-1, _mtx2fractional);
 	printf("MTX2 command  is %s\n", _mtx2command);
 	
-	if (gpioInitialise() < 0)
-	{
-		printf("pigpio initialisation failed.\n");
-		return;
-	}
-
 	gpioSetMode(NTX2B_ENABLE_BCM, PI_OUTPUT);	
 	
 	gpioWaveAddNew();
@@ -365,7 +368,7 @@ void SetMTX2Frequency(char *FrequencyString)
 		}
 	}
 	
-	gpioTerminate();
+	// gpioTerminate();
 }
 
 char *SerialPortName(void)
@@ -731,6 +734,12 @@ int main(void)
 		printf("Cannot initialise WiringPi\n");
 		exit (1);
 	}
+	
+	if (gpioInitialise() < 0)
+	{
+		printf("pigpio initialisation failed.\n");
+		exit (1);
+	}	
 
 	// Switch off the radio till it's configured
 	pinMode (NTX2B_ENABLE, OUTPUT);
@@ -743,7 +752,8 @@ int main(void)
 		pinMode (UBLOX_ENABLE, OUTPUT);
 		digitalWrite (UBLOX_ENABLE, 0);
 	}
-
+	
+		
 	if (!Config.DisableRTTY)
 	{
 		if (*Config.Frequency)
@@ -770,7 +780,15 @@ int main(void)
 		
 		digitalWrite (NTX2B_ENABLE, 1);
 	}
-		
+	
+	
+	// Turn strobe light off
+	if (Config.BlinkenLight >= 0)
+	{
+		SetupPWMFrequency(Config.BlinkenLight, 50);
+		ControlPWMOutput(Config.BlinkenLight, 1000);
+	}
+			
 	// SSDV Folders
 	sprintf(Config.Channels[0].SSDVFolder, "%s/RTTY", SSDVFolder);
 	*Config.Channels[1].SSDVFolder = '\0';										// No folder for APRS images
@@ -1008,4 +1026,6 @@ int main(void)
 			}
 		}
 	}
+	
+	gpioTerminate();
 }
