@@ -628,7 +628,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						// Strobe control
 						if (Config.BlinkenLight >= 0)
 						{
-							// if ((GPS->FlightMode >= fmDescending) && (GPS->Altitude < Config.FlashBelow))
+							if ((GPS->FlightMode >= fmDescending) && (GPS->Altitude < Config.FlashBelow))
 							{
 								ControlPWMOutput(Config.BlinkenLight, 2000);
 							}
