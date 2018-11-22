@@ -12,12 +12,26 @@ Software support is provided for customers who have purchased a PITS, PITS Zero 
 
 Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-image-from-scratch
 
+
+## Piezo Buzzer ##
+
+A piezo buzzer is another helpful device for locating a landed payload.  Use one that will operate from 3V and consumes less than 20mA; I use RS 617-3069 which is very loud.  Connect to a 0V pin on the Pi GPIO connector, and a spare I/O pin.
+
+Configure as follows, being careful to use a WiringPi pin number:
+ 
+	Piezo_Pin=4
+	Piezpo_Alt=1000
+
+For the above settings, the buzzer light will come on during flight once the payload descends below 1000m.
+
+
+
 ## Strobon LED strobe light ##
 
 These are **very** bright LED strobe lights made for RC models.  You can power them from the Pi 5V and 0V lines; note that they do pull 1A for 20ms for each flash, which might cause issues depending on the power supply; if in doubt add some capacitance at the strobe.
 
 The LED uses a PWM input to control its mode.  Choose any free pin, e.g. **BCM** pin 18 which is only used if you have an APRS board.  Configure as follows, being careful to use BCM pin numbers and **not** WiringPi pin numbers:
- 
+
 
 	Strobe_Pin=18
 	Strobe_Alt=1000

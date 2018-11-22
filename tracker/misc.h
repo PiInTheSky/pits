@@ -240,6 +240,10 @@ struct TConfig
     
     int BlinkenLight;
     int FlashBelow;
+    int Flashing;
+	    
+    int PiezoPin;
+    int WhistleBelow;
 	
 #	ifdef EXTRAS_PRESENT
 #		include "ex_misc_config.h"

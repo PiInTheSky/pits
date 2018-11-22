@@ -309,10 +309,18 @@ void LoadConfigFile(struct TConfig *Config)
 	if (Config->BlinkenLight >= 0)
 	{
 		Config->FlashBelow = ReadInteger(fp, "Strobe_Alt", -1, 0, Config->SSDVHigh);
+		Config->Flashing = 0;
 
 		printf("Enabled PCM Strobe Light on pin %d after descending below %d metres\n", Config->BlinkenLight, Config->FlashBelow);
 	}
 	
+	Config->PiezoPin = ReadInteger(fp, "Piezo_Pin", -1, 0, -1);
+	if (Config->PiezoPin >= 0)
+	{
+		Config->WhistleBelow = ReadInteger(fp, "Piezo_Alt", -1, 0, Config->SSDVHigh);
+
+		printf("Enabled Piezo Buzzer on pin %d after descending below %d metres\n", Config->PiezoPin, Config->WhistleBelow);
+	}
 
 	LoadAPRSConfig(fp, Config);
 	
@@ -788,6 +796,14 @@ int main(void)
 		SetupPWMFrequency(Config.BlinkenLight, 50);
 		ControlPWMOutput(Config.BlinkenLight, 1000);
 	}
+	
+	// Turn piezo buzzer off
+	if (Config.PiezoPin >= 0)
+	{
+		digitalWrite (Config.PiezoPin, 0);
+		pinMode (Config.PiezoPin, OUTPUT);
+	}
+	
 			
 	// SSDV Folders
 	sprintf(Config.Channels[0].SSDVFolder, "%s/RTTY", SSDVFolder);
