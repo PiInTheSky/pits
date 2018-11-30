@@ -220,6 +220,10 @@ void StartNewFileIfNeeded(int Channel)
 					RecordCount = MAX_SSDV_PACKETS;
 				}
 				
+				// FIFO for SSDV buffers
+				memcpy(&(Config.Channels[Channel].SSDVPackets[2]), &(Config.Channels[Channel].SSDVPackets[1]), sizeof(Config.Channels[Channel].SSDVPackets[2]));
+				memcpy(&(Config.Channels[Channel].SSDVPackets[1]), &(Config.Channels[Channel].SSDVPackets[0]), sizeof(Config.Channels[Channel].SSDVPackets[1]));
+				
 				// Now fill in list of un-sent packets
 				for (i=0; i<RecordCount; i++)
 				{

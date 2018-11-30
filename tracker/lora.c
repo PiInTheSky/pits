@@ -241,7 +241,16 @@ void setupRFM98(int LoRaChannel)
 
 void SwitchToLoRaMode(int LoRaChannel)
 {
-	setupRFM98(LoRaChannel);
+	setLoRaMode(LoRaChannel);
+
+	SetLoRaParameters(LoRaChannel,
+					  Config.LoRaDevices[LoRaChannel].ImplicitOrExplicit,
+					  Config.LoRaDevices[LoRaChannel].ErrorCoding,
+					  Config.LoRaDevices[LoRaChannel].Bandwidth,
+					  Config.LoRaDevices[LoRaChannel]. SpreadingFactor,
+					  Config.LoRaDevices[LoRaChannel].LowDataRateOptimize);
+						  
+	// setupRFM98(LoRaChannel);
 }
 
 void SendLoRaData(int LoRaChannel, unsigned char *buffer, int Length)
