@@ -19,7 +19,7 @@ tracker/ex_*
 telemetry.txt
 gps.txt
 prediction.txt
-take*
+take_pic*
 convert*
 *.bin
 accelcal.txt
