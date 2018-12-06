@@ -89,7 +89,9 @@ int32_t ms5611ReadRegister24(int fd, uint8_t address)
 
 void ms5611ReadPROM(int fd, uint16_t *fc)
 {
-    for (uint8_t offset = 0; offset < 6; offset++)
+	uint8_t offset;
+	
+    for (offset = 0; offset < 6; offset++)
     {
 		fc[offset] = ms5611ReadRegister16(fd, MS5611_CMD_READ_PROM + (offset * 2));
     }
