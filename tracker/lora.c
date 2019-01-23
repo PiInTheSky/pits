@@ -167,7 +167,7 @@ void SetLoRaFrequency(int LoRaChannel, double Frequency)
 
 	FrequencyValue = (unsigned long)(Frequency * (1.0 - Config.LoRaDevices[LoRaChannel].PPM/1000000.0) * 7110656 / 434);
 	
-	printf("Channel %d frequency %lf FrequencyValue = %06lXh\n", LoRaChannel, Frequency, FrequencyValue);
+	// printf("Channel %d frequency %lf FrequencyValue = %06lXh\n", LoRaChannel, Frequency, FrequencyValue);
 	
 	writeRegister(LoRaChannel, REG_FRF_MSB, (FrequencyValue >> 16) & 0xFF);		// Set frequency
 	writeRegister(LoRaChannel, REG_FRF_MID, (FrequencyValue >> 8) & 0xFF);
@@ -1313,6 +1313,8 @@ void *LoRaLoop(void *some_void_ptr)
 			
 			Channel = LoRaChannel + LORA_CHANNEL;
 			
+			Config.LoRaDevices[LoRaChannel].SendPacketType = ptNormal;
+			
 			if (Config.LoRaDevices[LoRaChannel].ReturnStateAfterCall)
 			{
 				double Frequency;
@@ -1328,7 +1330,7 @@ void *LoRaLoop(void *some_void_ptr)
 								  Config.LoRaDevices[LoRaChannel].Bandwidth,
 								  Config.LoRaDevices[LoRaChannel]. SpreadingFactor,
 								  Config.LoRaDevices[LoRaChannel].LowDataRateOptimize);
-				printf("Reset after Uplink Mode\n");
+				// printf("Reset after Uplink Mode\n");
 			}
 
 			// Calling mode needed ?
@@ -1370,7 +1372,7 @@ void *LoRaLoop(void *some_void_ptr)
 
 				sscanf(Config.LoRaDevices[LoRaChannel].CallingFrequency, "%lf", &Frequency);
 				SetLoRaFrequency(LoRaChannel, Frequency);
-				printf("Calling frequency is %lf\n", Frequency);
+				// printf("Calling frequency is %lf\n", Frequency);
 				
 				SetLoRaParameters(LoRaChannel, EXPLICIT_MODE, ERROR_CODING_4_8, BANDWIDTH_41K7, SPREADING_11, 0);	// 0x08);
 
