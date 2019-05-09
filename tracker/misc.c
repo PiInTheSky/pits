@@ -837,7 +837,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	static int FirstTime=1;
 	int LoRaChannel;
 	int ShowFields;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7;
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7, Sentence[256];
 	
 	if (FirstTime)
 	{
@@ -984,7 +984,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	// Bouy mode or normal mode ?
 	if ((Config.BuoyModeAltitude > 0) && (GPS->Altitude < Config.BuoyModeAltitude))
 	{
-		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf",
+		sprintf(Sentence, "$$%s,%d,%s,%7.5lf,%7.5lf",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,
@@ -999,7 +999,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 			
 		if (ShowFields) printf("\n");
 		
-		sprintf((char *)TxLine, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s%s",
+		sprintf(Sentence, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s%s",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,
@@ -1020,7 +1020,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 				ExtraFields7);
 	}
 	
-	AppendCRC((char *)TxLine);
+	AppendCRC(Sentence);
 	
 	// Separate sentence for landing prediction ?
 	if (Config.PredictionID[0])
@@ -1036,7 +1036,13 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 				GPS->PredictedLongitude,
 				0);
 		AppendCRC((char *)PredictionPayload);
-		strcat((char *)TxLine, PredictionPayload);
+		
+		strcpy((char *)TxLine, PredictionPayload);
+		strcat((char *)TxLine, Sentence);
+	}
+	else
+	{
+		strcpy((char *)TxLine, Sentence);
 	}
 
 	return strlen((char *)TxLine) + 1;
