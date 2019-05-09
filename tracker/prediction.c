@@ -144,7 +144,7 @@ void *PredictionLoop(void *some_void_ptr)
 #				endif	
 				
 				sprintf(Temp, "%" PRId32 ", %f, %f, %f, %f, %lf\n", GPS->Altitude, GPS->Latitude, GPS->Longitude, GPS->PredictedLatitude, GPS->PredictedLongitude, GPS->CDA);
-				WriteLog("prediction.txt", Temp);
+				WritePredictionLog(Temp);
 			}
 			
 			PreviousLatitude = GPS->Latitude;

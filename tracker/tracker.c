@@ -514,14 +514,10 @@ int OpenSerialPort(void)
 
 void SendSentence(int fd, char *TxLine)
 {
-	// printf("Sending sentence ...\n");
 	write(fd, TxLine, strlen(TxLine));
 
 	// Log now while we're waiting for the serial port, to eliminate or at least reduce downtime whilst logging
-	if (Config.EnableTelemetryLogging)
-	{
-		WriteLog("telemetry.txt", TxLine);
-	}
+	WriteTelemetryLog(TxLine);
 	
 	// Wait till those characters get sent
 	tcsetattr(fd, TCSAFLUSH, &options);

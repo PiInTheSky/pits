@@ -1405,10 +1405,8 @@ void *LoRaLoop(void *some_void_ptr)
 					{
 						PacketLength = BuildSentence(Sentence, Channel, GPS);
 						LogMessage("RTTY%d: %s", LoRaChannel, Sentence);
-						if (Config.EnableTelemetryLogging)
-						{
-							WriteLog("telemetry.txt", (char *)Sentence);
-						}
+
+						WriteTelemetryLog((char *)Sentence);
 										
 						SendLoRaRTTY(LoRaChannel, Sentence, PacketLength);		
 
@@ -1445,7 +1443,7 @@ void *LoRaLoop(void *some_void_ptr)
 						LogMessage("LORA%d: %s", LoRaChannel, Sentence);
 						if (Config.EnableTelemetryLogging)
 						{
-							WriteLog("telemetry.txt", (char *)Sentence);
+							WriteTelemetryLog((char *)Sentence);
 						}
 					}
 									

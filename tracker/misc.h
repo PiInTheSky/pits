@@ -253,7 +253,9 @@ struct TConfig
 extern struct TConfig Config;
 
 char Hex(unsigned char Character);
-void WriteLog(char *FileName, char *Buffer);
+void WriteGPSLog(char *Buffer);
+void WriteTelemetryLog(char *Buffer);
+void WritePredictionLog(char *Buffer);
 short open_i2c(int address);
 int FileExists(char *filename);
 int ReadBooleanFromString(FILE *fp, char *keyword, char *searchword);

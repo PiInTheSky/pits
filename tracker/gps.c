@@ -653,10 +653,8 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 					GPS->Satellites = satellites;
 				}
 			}
-			if (Config.EnableGPSLogging)
-			{
-				WriteLog("gps.txt", Buffer);
-			}
+
+			WriteGPSLog(Buffer);
 		}
 		else if (strncmp(Buffer+3, "RMC", 3) == 0)
 		{
@@ -700,10 +698,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 				}
 			}
 
-			if (Config.EnableGPSLogging)
-			{
-				WriteLog("gps.txt", Buffer);
-			}
+			WriteGPSLog(Buffer);
 		}
 		else if (strncmp(Buffer+3, "GSV", 3) == 0)
         {

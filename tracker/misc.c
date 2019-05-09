@@ -39,14 +39,81 @@ char Hex(unsigned char Character)
 	return HexTable[Character & 15];
 }
 
-void WriteLog(char *FileName, char *Buffer)
+void WriteGPSLog(char *Buffer)
 {
-	FILE *fp;
+	static FILE *fp = NULL;
+	static int LineCount = 0;
 	
-	if ((fp = fopen(FileName, "at")) != NULL)
+	if (Config.EnableGPSLogging)
+	{
+		if (LineCount > 120)
+		{
+			fclose(fp);
+			fp = NULL;
+			LineCount = 0;
+		}
+		
+		if (fp == NULL)
+		{
+			fp = fopen("gps.txt", "at");
+		}
+		
+		if (fp != NULL)
+		{
+			fputs(Buffer, fp);
+			LineCount++;
+		}
+	}
+}
+
+void WriteTelemetryLog(char *Buffer)
+{
+	static FILE *fp = NULL;
+	static int LineCount = 0;
+	
+	if (Config.EnableTelemetryLogging)
+	{
+		if (LineCount > 100)
+		{
+			fclose(fp);
+			fp = NULL;
+			LineCount = 0;
+		}
+		
+		if (fp == NULL)
+		{
+			fp = fopen("telemetry.txt", "at");
+		}
+		
+		if (fp != NULL)
+		{
+			fputs(Buffer, fp);
+			LineCount++;
+		}
+	}
+}
+
+void WritePredictionLog(char *Buffer)
+{
+	static FILE *fp = NULL;
+	static int LineCount = 0;
+	
+	if (LineCount > 60)
+	{
+		fclose(fp);
+		fp = NULL;
+		LineCount = 0;
+	}
+	
+	if (fp == NULL)
+	{
+		fp = fopen("prediction.txt", "at");
+	}
+	
+	if (fp != NULL)
 	{
 		fputs(Buffer, fp);
-		fclose(fp);
+		LineCount++;
 	}
 }
 
