@@ -43,9 +43,11 @@ while True:
 			folder2 = folder1 + "/" + time.strftime("%d_%m_%y")
 			if not os.path.isdir(folder2):
 				os.mkdir(folder2)
-			os.system("mv " + folder1 + "/*.JPG " + folder2)
-
-			os.remove(filename)
+			try:
+				os.system("mv " + folder1 + "/*.JPG " + folder2)
+				os.remove(filename)
+			finally:
+				pass
 			os.system("echo DONE > ssdv_done_" + str(i))
 
 	time.sleep(1)

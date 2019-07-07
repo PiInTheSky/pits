@@ -3,7 +3,9 @@ cd /home/pi/pits/tracker
 ./send_aprs &
 echo none | sudo tee /sys/class/leds/led0/trigger
 echo 1 | sudo tee /sys/class/leds/led0/brightness
-sudo ./camera &
+#sudo ./camera &
+sleep 30
+sudo python3 gopro.py &
 #python3 sensors.py &
 #python3 astro_led.py &
 #python3 webstuff.py

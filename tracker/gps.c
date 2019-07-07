@@ -375,16 +375,19 @@ uint8_t GPSGetc(struct gps_info *bb)
 
 int GPSChecksumOK(char *Buffer, int Count)
 {
-  unsigned char XOR, i, c;
+	unsigned char XOR, i, c, Star;
 
-  XOR = 0;
-  for (i = 1; i < (Count-4); i++)
-  {
-    c = Buffer[i];
-    XOR ^= c;
-  }
+	// Find star
+	for (Star=Count; (Star > 1) && (Buffer[Star] != '*'); Star--);
+	
+	XOR = 0;
+	for (i = 1; i < Star; i++)
+	{
+		c = Buffer[i];
+		XOR ^= c;
+	}
 
-  return (Buffer[Count-4] == '*') && (Buffer[Count-3] == Hex(XOR >> 4)) && (Buffer[Count-2] == Hex(XOR & 15));
+	return (Buffer[Star] == '*') && (Buffer[Star+1] == Hex(XOR >> 4)) && (Buffer[Star+2] == Hex(XOR & 15));
 }
 
 void FixUBXChecksum(unsigned char *Message, int Length)
@@ -749,7 +752,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
     }
     else
     {
-       printf("Bad checksum\r\n");
+       printf("Bad checksum %d %d %s\r\n", Count, strlen(Buffer), Buffer);
 	}
 }
 
@@ -841,7 +844,7 @@ void *GPSLoop(void *some_void_ptr)
 							}
 						}
 						ProcessLine(NULL, GPS, Line, Length, 1);
-						ProcessLine(NULL, GPS, Buffer, strlen(Buffer)-1, 2);
+						ProcessLine(NULL, GPS, Buffer, strlen(Buffer), 2);
 					}
 					else
 					{				
