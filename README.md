@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+08/07/2019
+==========
+
+- Removed some warnings from the latest gcc in Raspbian Buster
+
 22/11/2018
 ==========
 

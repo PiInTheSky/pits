@@ -38,7 +38,7 @@ void *DS18B20Loop(void *some_void_ptr)
 				{
 					if ((dp->d_name[0] != 'W') && (dp->d_name[2] == '-'))
 					{
-						sprintf(filename, "%s/%s/w1_slave", folder, dp->d_name);
+						sprintf(filename, "%.40s/%.30s/w1_slave", folder, dp->d_name);
 						if ((fp = fopen(filename, "r")) != NULL)
 						{
 							// 44 02 4b 46 7f ff 0c 10 ee : crc=ee YES

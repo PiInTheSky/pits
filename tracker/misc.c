@@ -837,7 +837,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	static int FirstTime=1;
 	int LoRaChannel;
 	int ShowFields;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7, Sentence[256];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7, Sentence[512];
 	
 	if (FirstTime)
 	{
@@ -973,7 +973,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 			if (line[0])
 			{
 				line[strcspn(line, "\n")] = '\0';
-				sprintf(ExternalFields, ",%s", line);
+				sprintf(ExternalFields, ",%.90s", line);
 			}
 			fseek(ExternalFile, 0, SEEK_END);
 			// clearerr(ExternalFile);
@@ -999,7 +999,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 			
 		if (ShowFields) printf("\n");
 		
-		sprintf(Sentence, "$$%s,%d,%s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%s%s%s%s%s%s%s%s",
+		snprintf(Sentence, 512, "$$%.15s,%d,%.9s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%.12s%.20s%.20s%.40s%.90s%.20s%.10s%.40s",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,

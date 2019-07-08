@@ -360,7 +360,8 @@ void SendAPRS(struct TGPS *GPS)
 	{
 		char s[10];
 
-		sprintf(s, strncpy(s, Config.APRS_Callsign, 7));
+		strncpy(s, Config.APRS_Callsign, 7);
+		s[7] = '\0';
 		if(Config.APRS_ID) snprintf(s + strlen(s), 4, "-%i", Config.APRS_ID);
 		
       // Transmit telemetry definitions

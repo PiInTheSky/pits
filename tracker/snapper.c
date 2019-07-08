@@ -89,7 +89,7 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 			{
 				if (strchr(ep->d_name, '~') == NULL)
 				{
-					sprintf(FileName, "%s/%s", SSDVFolder, ep->d_name);
+					sprintf(FileName, "%.60s/%.30s", SSDVFolder, ep->d_name);
 					stat(FileName, &st);
 					if (st.st_size > LargestFileSize)
 					{
