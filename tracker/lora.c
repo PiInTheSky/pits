@@ -494,11 +494,10 @@ int BuildLoRaPositionPacket(unsigned char *TxLine, int LoRaChannel, struct TGPS 
 	return sizeof(struct TBinaryPacket);
 }
 
-int SendLoRaImage(int LoRaChannel, int RTTYMode)
+void SendLoRaImage(int LoRaChannel, int RTTYMode)
 {
     unsigned char Buffer[256];
     size_t Count;
-    int SentSomething = 0;
 	int ResentPacket, Channel;
 	
 	Channel = LORA_CHANNEL + LoRaChannel;
@@ -526,8 +525,6 @@ int SendLoRaImage(int LoRaChannel, int RTTYMode)
 			{
 				SendLoRaData(LoRaChannel, Buffer+1, 255);
 			}
-		
-			SentSomething = 1;
         }
         else
         {
@@ -535,8 +532,14 @@ int SendLoRaImage(int LoRaChannel, int RTTYMode)
             Config.Channels[Channel].ImageFP = NULL;
         }
     }
-
-    return SentSomething;
+	
+	if (Config.Channels[Channel].ImageFP == NULL)
+	{
+		// Nothing sent
+		memset(Buffer, '\0', 255);
+		SendLoRaData(LoRaChannel, Buffer, 255);
+		// printf("Sending NULL packet as time filler\n");
+	}
 }
 
 int TDMTimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
@@ -1387,7 +1390,7 @@ void *LoRaLoop(void *some_void_ptr)
 			}
 			else
 			{			
-				int MaxImagePackets, DoRTTY, PacketLength, SentSomething;
+				int MaxImagePackets, DoRTTY, PacketLength;
 				
 				
 				DoRTTY = 0;
@@ -1397,8 +1400,7 @@ void *LoRaLoop(void *some_void_ptr)
 					DoRTTY = Config.LoRaDevices[LoRaChannel].RTTYPacketIndex < Config.LoRaDevices[LoRaChannel].RTTYCount;
 				}
 				
-				SentSomething = 1;
-				
+			
 				if (DoRTTY)
 				{
 					if ((Config.Channels[Channel].SendMode == 0) || (Config.Channels[Channel].ImagePackets == 0) || (Config.LoRaDevices[LoRaChannel].RTTYEvery > 0))
@@ -1455,10 +1457,10 @@ void *LoRaLoop(void *some_void_ptr)
 				{
 					// Image packet
 					
-					SentSomething = SendLoRaImage(LoRaChannel, 0);
+					SendLoRaImage(LoRaChannel, 0);
 				}
 				
-				if (SentSomething && (Config.LoRaDevices[LoRaChannel].RTTYBaudRate > 0) && (Config.LoRaDevices[LoRaChannel].RTTYCount > 0))
+				if ((Config.LoRaDevices[LoRaChannel].RTTYBaudRate > 0) && (Config.LoRaDevices[LoRaChannel].RTTYCount > 0))
 				{
 					if (++Config.LoRaDevices[LoRaChannel].RTTYPacketIndex >= (Config.LoRaDevices[LoRaChannel].RTTYCount + Config.LoRaDevices[LoRaChannel].RTTYEvery))
 					{

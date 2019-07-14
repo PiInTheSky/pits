@@ -829,7 +829,8 @@ void *GPSLoop(void *some_void_ptr)
 						printf("%s", Line);
 					}
 					
-					if ((fp != NULL) && (strstr(Line, "GGA") != NULL))
+					// if ((fp != NULL) && (strstr(Line, "GGA") != NULL))
+					if (fp != NULL)
 					{
 						static int PostFileCount=0;
 						static char Buffer[100];
@@ -843,8 +844,8 @@ void *GPSLoop(void *some_void_ptr)
 								exit(1);
 							}
 						}
-						ProcessLine(NULL, GPS, Line, Length, 1);
-						ProcessLine(NULL, GPS, Buffer, strlen(Buffer), 2);
+						ProcessLine(&bb, GPS, Line, Length, 1);
+						ProcessLine(&bb, GPS, Buffer, strlen(Buffer), 2);
 					}
 					else
 					{				
