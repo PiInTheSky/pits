@@ -211,8 +211,9 @@ void setupRFM98(int LoRaChannel)
 		if (Config.LoRaDevices[LoRaChannel].CS > 0)
 		{
 			pinMode(Config.LoRaDevices[LoRaChannel].CS, OUTPUT);
+			digitalWrite(Config.LoRaDevices[LoRaChannel].CS, 1);
 		}
-		if (Config.LoRaDevices[LoRaChannel].CS >= 0)
+		if (Config.LoRaDevices[LoRaChannel].RST >= 0)
 		{
 			pinMode(Config.LoRaDevices[LoRaChannel].RST, OUTPUT);
 			digitalWrite(Config.LoRaDevices[LoRaChannel].RST, 1);

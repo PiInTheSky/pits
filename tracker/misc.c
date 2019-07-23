@@ -616,8 +616,14 @@ void ReadString(FILE *fp, char *keyword, int Channel, char *Result, int Length, 
 			if (strcasecmp(FullKeyWord, token) == 0)
 			{
 				value = strtok(NULL, "\n");
-				strncpy(Result, value, Length);
-				if (Length) Result[Length-1] = '\0';
+				if (Length)
+				{
+					if (value != NULL)
+					{
+						strncpy(Result, value, Length);
+					}
+					Result[Length-1] = '\0';
+				}
 
 				return;
 			}
@@ -718,7 +724,7 @@ int ReadBoolean(FILE *fp, char *keyword, int Channel, int NeedValue, int *Result
 int ReadBooleanFromString(FILE *fp, char *keyword, char *searchword)
 {
 	char Temp[100];
-
+	
 	ReadString(fp, keyword, -1, Temp, sizeof(Temp), 0);
 
 	if (strcasestr(Temp, searchword)) return 1; else return 0;
