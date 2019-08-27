@@ -124,6 +124,13 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+27/08/2019
+==========
+
+- Pedestrian mode for UBlox
+- Use Flight_Mode_Altitude setting to choose flight mode or pedestrian for UBlox and L80
+- Set height and/or width to zero to tell raspistill to use full camera resolution for "full" mode images
+ 
 08/07/2019
 ==========
 
