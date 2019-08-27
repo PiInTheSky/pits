@@ -205,7 +205,7 @@ void *CameraLoop(void *some_void_ptr)
 					
 					GetWidthAndHeightForChannel(GPS, Channel, &width, &height);
 					
-					if ((width > 0) && (height > 0))
+					if ((width >= 0) && (height >= 0))
 					{
 						// Create name of file
 						sprintf(filename, "/home/pi/pits/tracker/take_pic_%d", Channel);
@@ -243,7 +243,14 @@ void *CameraLoop(void *some_void_ptr)
 									}
 									else
 									{
-										fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
+										if ((width == 0) || (height == 0))
+										{
+											fprintf(fp, "raspistill -st -t 3000 -ex auto -mm matrix %s -o %s\n", Config.CameraSettings, FileName);
+										}
+										else
+										{
+											fprintf(fp, "raspistill -st -w %d -h %d -t 3000 -ex auto -mm matrix %s -o %s\n", width, height, Config.CameraSettings, FileName);
+										}
 									}
 								}
 								else

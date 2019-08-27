@@ -40,80 +40,41 @@ char Hex(unsigned char Character)
 }
 
 void WriteGPSLog(char *Buffer)
-{
-	static FILE *fp = NULL;
-	static int LineCount = 0;
-	
+{	
 	if (Config.EnableGPSLogging)
 	{
-		if (LineCount > 120)
-		{
-			fclose(fp);
-			fp = NULL;
-			LineCount = 0;
-		}
+		FILE *fp = NULL;
 		
-		if (fp == NULL)
-		{
-			fp = fopen("gps.txt", "at");
-		}
-		
-		if (fp != NULL)
+		if ((fp = fopen("gps.txt", "at")) != NULL)
 		{
 			fputs(Buffer, fp);
-			LineCount++;
+			fclose(fp);
 		}
 	}
 }
 
 void WriteTelemetryLog(char *Buffer)
 {
-	static FILE *fp = NULL;
-	static int LineCount = 0;
-	
 	if (Config.EnableTelemetryLogging)
 	{
-		if (LineCount > 100)
-		{
-			fclose(fp);
-			fp = NULL;
-			LineCount = 0;
-		}
+		FILE *fp = NULL;
 		
-		if (fp == NULL)
-		{
-			fp = fopen("telemetry.txt", "at");
-		}
-		
-		if (fp != NULL)
+		if ((fp = fopen("telemetry.txt", "at")) != NULL)
 		{
 			fputs(Buffer, fp);
-			LineCount++;
+			fclose(fp);
 		}
 	}
 }
 
 void WritePredictionLog(char *Buffer)
 {
-	static FILE *fp = NULL;
-	static int LineCount = 0;
+	FILE *fp = NULL;
 	
-	if (LineCount > 60)
-	{
-		fclose(fp);
-		fp = NULL;
-		LineCount = 0;
-	}
-	
-	if (fp == NULL)
-	{
-		fp = fopen("prediction.txt", "at");
-	}
-	
-	if (fp != NULL)
+	if ((fp = fopen("prediction.txt", "at")) != NULL)
 	{
 		fputs(Buffer, fp);
-		LineCount++;
+		fclose(fp);
 	}
 }
 

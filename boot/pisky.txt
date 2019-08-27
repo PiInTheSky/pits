@@ -18,8 +18,9 @@ info_messages=2
 
 full_low_width=640
 full_low_height=480
-full_high_width=2592
-full_high_height=1944
+# 0 in either of the following tells the software to use full resolution from the Pi camera
+full_high_width=0
+full_high_height=0
 full_image_period=60
 
 #APRS_Callsign=CHANGE
