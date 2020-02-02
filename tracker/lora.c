@@ -1398,7 +1398,10 @@ void *LoRaLoop(void *some_void_ptr)
 				
 				if ((Config.LoRaDevices[LoRaChannel].RTTYBaudRate > 0) && (Config.LoRaDevices[LoRaChannel].RTTYCount > 0))
 				{
-					DoRTTY = Config.LoRaDevices[LoRaChannel].RTTYPacketIndex < Config.LoRaDevices[LoRaChannel].RTTYCount;
+					if ((GPS->FlightMode >= fmDescending) && (GPS->Altitude < Config.WhistleBelow))
+					{
+						DoRTTY = Config.LoRaDevices[LoRaChannel].RTTYPacketIndex < Config.LoRaDevices[LoRaChannel].RTTYCount;
+					}
 				}
 				
 			
