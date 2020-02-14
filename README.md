@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+14/02/2020
+==========
+
+- Disable null packets for LoRa mode 0
+
 27/08/2019
 ==========
 

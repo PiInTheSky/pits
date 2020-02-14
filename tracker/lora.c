@@ -537,9 +537,12 @@ void SendLoRaImage(int LoRaChannel, int RTTYMode)
 	if (Config.Channels[Channel].ImageFP == NULL)
 	{
 		// Nothing sent
-		memset(Buffer, '\0', 255);
-		SendLoRaData(LoRaChannel, Buffer, 255);
-		// printf("Sending NULL packet as time filler\n");
+		if (Config.LoRaDevices[LoRaChannel].SpeedMode > 0)
+		{
+			memset(Buffer, '\0', 255);
+			SendLoRaData(LoRaChannel, Buffer, 255);
+			// printf("Sending NULL packet as time filler\n");
+		}
 	}
 }
 
