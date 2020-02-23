@@ -654,7 +654,7 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						{
 							if ((GPS->FlightMode >= fmDescending) && (GPS->Altitude < Config.WhistleBelow))
 							{
-								digitalWrite(Config.PiezoPin, 1);
+								digitalWrite(Config.PiezoPin, (GPS->MessageCount % 10 == 0));
 							}
 						}
 					}
