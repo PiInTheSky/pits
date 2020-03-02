@@ -26,6 +26,8 @@ void *DS18B20Loop(void *some_void_ptr)
 	int SensorCount;
 
 	GPS = (struct TGPS *)some_void_ptr;
+	
+	GPS->DS18B20Count = 0;
 
 	while (1)
 	{
@@ -85,7 +87,6 @@ void *DS18B20Loop(void *some_void_ptr)
 				fscanf (fp, "%lf", &T);
 				GPS->DS18B20Temperature[0] = T / 1000;
 				// printf ("GPU temperature is %6.3f C.\n", GPS->DS18B20Temperature[0]);
-				GPS->DS18B20Count = 1;
 				fclose (fp);
 			}
 		}

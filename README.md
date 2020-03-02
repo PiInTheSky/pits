@@ -18,7 +18,7 @@ Follow the instructions at http://www.pi-in-the-sky.com/index.php?id=sd-card-ima
 A piezo buzzer is another helpful device for locating a landed payload.  Use one that will operate from 3V and consumes less than 20mA; I use RS 617-3069 which is very loud.  Connect to a 0V pin on the Pi GPIO connector, and a spare I/O pin.
 
 Configure as follows, being careful to use a WiringPi pin number:
- 
+
 	Piezo_Pin=4
 	Piezpo_Alt=1000
 
@@ -50,7 +50,7 @@ You can enable any **one** of these supported sensor devices using these lines i
 	Enable_BMP085=Y
 
 All of them measure pressure and temperature; the BME280 also measures humidity.
- 
+
 
 ## RTTY through LoRa ##
 
@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+02/03/2020
+==========
+
+- Fix GPU temperature only being read once if there's no DS18B20 (i.e. not using PITS board)
+
 14/02/2020
 ==========
 
@@ -135,7 +140,7 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 - Pedestrian mode for UBlox
 - Use Flight_Mode_Altitude setting to choose flight mode or pedestrian for UBlox and L80
 - Set height and/or width to zero to tell raspistill to use full camera resolution for "full" mode images
- 
+
 08/07/2019
 ==========
 
@@ -195,12 +200,12 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 ==========
 
 - Added support direct upload to Habitat using an internet connection
- 
+
 03/03/2017
 ==========
 
 - Added support for Pi Zero W 
- 
+
 07/11/2016
 ==========
 
