@@ -238,12 +238,27 @@ struct TConfig
 	// External data file (read into telemetry)
 	char ExternalDataFileName[100];
     
+	// Lights and buzzers
     int BlinkenLight;
     int FlashBelow;
     int Flashing;
-	    
     int PiezoPin;
     int WhistleBelow;
+	
+	// Cutdown
+	int EnableCutdown;								// 1 = Enable cutdown tests.  Adds status to telemetry
+	int CutdownPin;									// WiringPi pin for cutdown output.  Typically drives nichrome via MOSFET.  No support yet for servo cutdown.
+	float CutdownLongitude, CutdownLatitude;		// Used to set where cutdown will fire to limit distance from launch
+	int32_t MinCutdownAltitude;						// Cutdown will not fire below this altitude (except for manual uplink)
+	int32_t CutdownAltitude;						// Cut down above this altitude
+	unsigned long CutdownTimeSinceLaunch;			// Cutdown after this flight timne in seconds
+	int CutdownPeriod;								// Time that cutdown is triggered for (manual uplink can override)
+	char CutdownTest[16];							// Strting mask that, with lat/lon settings, controls where cutdown will trigger by position
+	int CutdownBurst;								// 1 = cutdown once burst detected
+	
+	// Uplink
+	char UplinkCode[32];
+		
 	
 #	ifdef EXTRAS_PRESENT
 #		include "ex_misc_config.h"
@@ -280,3 +295,8 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS);
 int FixDirection180(int Angle);
 void SetupPWMFrequency(int Pin, int Frequency);
 void ControlPWMOutput(int Pin, int Period);
+void DecryptMessage(char *Code, char *Message);
+char GetChar(char **Message);
+void GetString(char *Field, char **Message);
+int32_t GetInteger(char **Message);
+double GetFloat(char **Message);

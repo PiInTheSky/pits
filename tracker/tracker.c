@@ -54,6 +54,7 @@
 #include "pipe.h"
 #include "prediction.h"
 #include "log.h"
+#include "cutdown.h"
 #ifdef EXTRAS_PRESENT
 #	include "ex_tracker.h"
 #endif	
@@ -260,6 +261,85 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->payload_weight = ReadFloat(fp, "payload_weight", -1, 0, 0.66);
 		Config->TargetAltitude = ReadInteger(fp, "Target_Altitude", -1, 0, 0);
 		ReadString(fp, "prediction_id", -1, Config->PredictionID, sizeof(Config->PredictionID), 0);
+	}
+
+	ReadString(fp, "Uplink_Code", -1, Config->UplinkCode, sizeof(Config->UplinkCode), 0);
+	if (*Config->UplinkCode)
+	{
+		printf("Uplink code is '%s'\n", Config->UplinkCode);
+	}
+	
+	ReadBoolean(fp, "Enable_Cutdown", -1, 0, &(Config->EnableCutdown));
+	if (Config->EnableCutdown)
+	{
+		printf("Cutdown - enabled\n");
+		
+		Config->MinCutdownAltitude = ReadInteger(fp, "Min_Cutdown_Altitude", -1, 0, 0);
+		if (Config->MinCutdownAltitude > 0)
+		{
+			printf("        - inactive below %" PRId32 " metres\n", Config->MinCutdownAltitude);
+		}
+		Config->CutdownAltitude = ReadInteger(fp, "Cutdown_Altitude", -1, 0, 0);
+		if (Config->CutdownAltitude > 0)
+		{
+			printf("        - will trigger at an altitude of %" PRId32 " metres\n", Config->CutdownAltitude);
+		}
+		
+		Config->CutdownLatitude = ReadFloat(fp, "Cutdown_Latitude", -1, 0, 0);
+		Config->CutdownLongitude = ReadFloat(fp, "Cutdown_Longitude", -1, 0, 0);
+
+		ReadString(fp, "Cutdown_Test", -1, Config->CutdownTest, sizeof(Config->CutdownTest), 0);
+		if (strcasecmp("N", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger North of latitude %.5f\n", Config->CutdownLatitude);
+		}
+		else if (strcasecmp("NE", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger North-East of latitude %.5f, longitude %.5f\n", Config->CutdownLatitude, Config->CutdownLongitude);
+		}
+		else if (strcasecmp("E", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger East of latitude %.5f\n", Config->CutdownLongitude);
+		}
+		else if (strcasecmp("SE", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger South-East of latitude %.5f, longitude %.5f\n", Config->CutdownLatitude, Config->CutdownLongitude);
+		}
+		else if (strcasecmp("S", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger South of latitude %.5f\n", Config->CutdownLatitude);
+		}
+		else if (strcasecmp("SW", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger South-West of latitude %.5f, longitude %.5f\n", Config->CutdownLatitude, Config->CutdownLongitude);
+		}
+		else if (strcasecmp("W", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger West of latitude %.5f\n", Config->CutdownLongitude);
+		}
+		else if (strcasecmp("NW", Config->CutdownTest) == 0)
+		{
+			printf("        - will trigger North-West of latitude %.5f, longitude %.5f\n", Config->CutdownLatitude, Config->CutdownLongitude);
+		}
+
+		Config->CutdownTimeSinceLaunch = ReadInteger(fp, "Cutdown_Time_Since_Launch", -1, 0, 0);
+		if (Config->CutdownTimeSinceLaunch > 0)
+		{
+			printf("        - will trigger after a flight time of %lu minutes\n", Config->CutdownTimeSinceLaunch);
+			Config->CutdownTimeSinceLaunch *= 60;
+		}
+		
+		ReadBoolean(fp, "Cutdown_Burst", -1, 0, &(Config->CutdownBurst));
+		if (Config->CutdownBurst)
+		{
+			printf("        - will trigger after balloon burst detected\n");
+		}
+		
+		Config->CutdownPeriod = ReadInteger(fp, "Cutdown_Period", -1, 0, 5);
+		printf("        - period (on time) is %d seconds\n", Config->CutdownPeriod);
+		
+		Config->CutdownPin = ReadInteger(fp, "Cutdown_Pin", -1, 0, 22);
+		printf("        - pin is %d\n", Config->CutdownPin);
 	}
 	
 #	ifdef EXTRAS_PRESENT
@@ -645,7 +725,7 @@ int main(void)
 	unsigned char Sentence[200];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, MS5611Thread, LEDThread, LogThread, PipeThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, MS5611Thread, LEDThread, CutdownThread, LogThread, PipeThread;
 	if (prog_count("tracker") > 1)
 	
 	{
@@ -917,6 +997,12 @@ int main(void)
 	if (pthread_create(&LEDThread, NULL, LEDLoop, &GPS))
 	{
 		fprintf(stderr, "Error creating LED thread\n");
+		return 1;
+	}
+	
+	if (pthread_create(&CutdownThread, NULL, CutdownLoop, &GPS))
+	{
+		fprintf(stderr, "Error creating cutdown thread\n");
 		return 1;
 	}
 

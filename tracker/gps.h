@@ -1,6 +1,7 @@
 // Types
 
 typedef enum {fmIdle, fmLaunched, fmDescending, fmHoming, fmDirect, fmDownwind, fmUpwind, fmLanding, fmLanded} TFlightMode;
+typedef enum {csUnarmed, csArmed, csAltitude, csPosition, csFlightTime, csBurst, csManual} TCutdownStatus;
 
 struct TGPS
 {
@@ -41,6 +42,10 @@ struct TGPS
 	// int PowerMode;
 	// int Lock;
 	unsigned int MessageCount;
+	
+	// Cutdown
+	TCutdownStatus CutdownStatus;
+	
 
 #	ifdef EXTRAS_PRESENT
 #		include "ex_gps.h"
@@ -56,7 +61,5 @@ void *GPSLoop(void *some_void_ptr);
 #ifdef EXTRAS_PRESENT
 void gps_postprocess_position(struct TGPS *GPS, int ActionMask, float latitude, float longitude);
 void gps_flight_modes(struct TGPS *GPS);
-
-void cutdown_checks(struct TGPS *GPS);
 #endif	
 

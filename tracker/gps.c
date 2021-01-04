@@ -30,6 +30,7 @@
 #include <wiringPi.h>
 #include "gps.h"
 #include "misc.h"
+#include "cutdown.h"
 
 
 struct gps_info {
@@ -584,12 +585,13 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 						
 #						ifdef EXTRAS_PRESENT
 							gps_postprocess_position(GPS, ActionMask, latitude, longitude);
-							cutdown_checks(GPS);
 #						else
 							GPS->Latitude = latitude;
 							GPS->Longitude = longitude;
 #						endif					
-						
+
+						cutdown_checks(GPS);
+							
 						if (GPS->Altitude <= 0)
 						{
 							GPS->AscentRate = 0;

@@ -804,7 +804,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	static int FirstTime=1;
 	int LoRaChannel;
 	int ShowFields;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], *ExtraFields7, Sentence[512];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], ExtraFields7[32], *ExtraFields8, Sentence[512];
 	
 	if (FirstTime)
 	{
@@ -823,8 +823,9 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	ExtraFields4[0] = '\0';
 	ExtraFields5[0] = '\0';
 	ExtraFields6[0] = '\0';
+	ExtraFields7[0] = '\0';
 	
-	ExtraFields7 = "";
+	ExtraFields8 = "";
 	
 	if (ShowFields) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Speed,Head,Sats,Int.Temp", Channels[Channel]);
 	
@@ -948,6 +949,13 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 		}
 	}	
 	
+	
+	if (Config.EnableCutdown)
+	{
+		sprintf(ExtraFields7, ",%d", GPS->CutdownStatus);
+		if (ShowFields) printf(",CutdownStatus");
+	}
+	
 	// Bouy mode or normal mode ?
 	if ((Config.BuoyModeAltitude > 0) && (GPS->Altitude < Config.BuoyModeAltitude))
 	{
@@ -961,12 +969,12 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	else
 	{
 		#ifdef EXTRAS_PRESENT
-			ExtraFields7 = misc_get_sentence_fields(GPS, ShowFields);
+			ExtraFields8 = misc_get_sentence_fields(GPS, ShowFields);
 		#endif
 			
 		if (ShowFields) printf("\n");
 		
-		snprintf(Sentence, 512, "$$%.15s,%d,%.9s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%.12s%.20s%.20s%.40s%.90s%.20s%.10s%.40s",
+		snprintf(Sentence, 512, "$$%.15s,%d,%.9s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%.12s%.20s%.20s%.40s%.90s%.20s%.10s%.10s%.40s",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,
@@ -984,7 +992,8 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 				ExternalFields,
 				ExtraFields5,
 				ExtraFields6,
-				ExtraFields7);
+				ExtraFields7,
+				ExtraFields8);
 	}
 	
 	AppendCRC(Sentence);
@@ -1042,3 +1051,58 @@ void ControlPWMOutput(int Pin, int Period)
 	gpioServo(Pin, Period);
 }
 
+void DecryptMessage(char *Code, char *Message)
+{
+	int i, Len;
+	
+	Len = strlen(Code);
+	
+	if (Len > 0)
+	{
+		printf("Decoding ...\n");
+		i = 0;
+		while (*Message)
+		{
+			*Message = (*Message ^ Code[i]) & 0x7F;
+			Message++;
+			i = (i + 1) % Len;
+		}
+	}
+}
+
+char GetChar(char **Message)
+{
+	return *((*Message)++);
+}
+
+void GetString(char *Field, char **Message)
+{
+	while (**Message && (**Message != '/'))
+	{
+		*Field++ = *((*Message)++);
+	}
+	
+	*Field = 0;
+	if (**Message)
+	{
+		(*Message)++;
+	}
+}
+
+int32_t GetInteger(char **Message)
+{
+	char Temp[32];
+	
+	GetString(Temp, Message);
+	
+	return atoi(Temp);
+}
+
+double GetFloat(char **Message)
+{
+	char Temp[32];
+	
+	GetString(Temp, Message);
+	
+	return atof(Temp);
+}

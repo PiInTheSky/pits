@@ -29,6 +29,7 @@
 #	include "ex_lora.h"
 #endif	
 #include "habpack.h"
+#include "cutdown.h"
 
 // RFM98
 uint8_t currentMode = 0x81;
@@ -762,6 +763,61 @@ int receiveMessage(int LoRaChannel, unsigned char *message)
 	return Bytes;
 }
 
+void ProcessCommandUplinkMessage(int LoRaChannel, struct TGPS *GPS, char *Message)
+{
+	// Process uplink message from gateway
+	char Command, Parameter, PayloadID[32];
+	int CutdownPeriod;
+		
+	printf("Message is '%s'\n", Message);
+	Message++;
+	DecryptMessage(Config.UplinkCode, Message);
+
+	printf("Message is '*%s'\n", Message);
+	
+	GetString(PayloadID, &Message);
+	
+	if (strcmp(PayloadID, Config.Channels[LoRaChannel+LORA_CHANNEL].PayloadID) == 0)
+	{
+		Config.LoRaDevices[LoRaChannel].MessageCount++;
+		strcpy(Config.LoRaDevices[LoRaChannel].LastCommand, Message);
+		
+		printf("Uplink message for us = '%s'\n", Message);
+		Command = GetChar(&Message);
+		
+		if (Command == 'C')
+		{
+			// Cutdown
+			Parameter = GetChar(&Message);
+
+			if (Parameter == 'N')
+			{
+				CutdownPeriod = GetInteger(&Message);
+							
+				if (CutdownPeriod <= 0)
+				{
+					CutdownPeriod = Config.CutdownPeriod;
+				}
+				
+				printf("** MANUAL CUTDOWN FOR %d SECONDS **\n", CutdownPeriod);
+				
+				Cutdown(CutdownPeriod);
+				
+				GPS->CutdownStatus = csManual;
+			}
+			else if (Parameter == 'A')
+			{
+				printf("Set cutdown altitude %sm\n", Message);
+				Config.CutdownAltitude = GetInteger(&Message);
+			}
+		}
+	}
+	else
+	{
+		printf("Uplink message was for %s and not us\n", PayloadID);
+	}
+}
+
 void CheckForPacketOnListeningChannels(struct TGPS *GPS)
 {
 	int LoRaChannel;
@@ -875,6 +931,12 @@ void CheckForPacketOnListeningChannels(struct TGPS *GPS)
 							printf("SSDV uplink message %s", Message);
 							ProcessSSDVUplinkMessage(LORA_CHANNEL+LoRaChannel, Message);
 						}
+						else if (Message[0] == '*')
+						{
+							// Uplink Command Device message
+							ProcessCommandUplinkMessage(LoRaChannel, GPS, (char *)Message);
+						}
+					
 #						ifdef EXTRAS_PRESENT
 							else if (ProcessExtraMessage(LoRaChannel, Message, Bytes, GPS))
 							{
