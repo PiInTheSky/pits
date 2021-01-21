@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+21_01_2021
+==========
+
+- Extend uplink options
+
 02/03/2020
 ==========
 

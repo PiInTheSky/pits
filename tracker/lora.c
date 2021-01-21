@@ -30,6 +30,7 @@
 #endif	
 #include "habpack.h"
 #include "cutdown.h"
+#include "pin.h"
 
 // RFM98
 uint8_t currentMode = 0x81;
@@ -767,7 +768,6 @@ void ProcessCommandUplinkMessage(int LoRaChannel, struct TGPS *GPS, char *Messag
 {
 	// Process uplink message from gateway
 	char Command, Parameter, PayloadID[32];
-	int CutdownPeriod;
 		
 	printf("Message is '%s'\n", Message);
 	Message++;
@@ -792,6 +792,9 @@ void ProcessCommandUplinkMessage(int LoRaChannel, struct TGPS *GPS, char *Messag
 
 			if (Parameter == 'N')
 			{
+				int CutdownPeriod;
+				
+				// Cutdown Now
 				CutdownPeriod = GetInteger(&Message);
 							
 				if (CutdownPeriod <= 0)
@@ -807,9 +810,50 @@ void ProcessCommandUplinkMessage(int LoRaChannel, struct TGPS *GPS, char *Messag
 			}
 			else if (Parameter == 'A')
 			{
+				// Cutdown at specified altitude
 				printf("Set cutdown altitude %sm\n", Message);
 				Config.CutdownAltitude = GetInteger(&Message);
 			}
+		}
+		else if (Command == 'P')
+		{
+			int Pin, Period;		
+			// Control Specific Pin
+			
+			Pin = GetInteger(&Message);
+			Period = GetInteger(&Message);
+			
+			printf("** SET PIN %d FOR %d SECONDS **\n", Pin, Period);
+
+			if ((Pin > 0) && (Period >= 0) && (Period <= 60))
+			{
+				ControlPin(Pin, Period);
+			}
+		}
+		else if (Command == 'S')
+		{
+			int Pin, Period, Position;
+			// Control Specific Pin
+			
+			Pin = GetInteger(&Message);
+			Period = GetInteger(&Message);
+			Position = GetInteger(&Message);
+			
+			printf("** SERVO PIN %d FOR %d SECONDS POSITION %d **\n", Pin, Period, Position);
+
+			if ((Pin > 0) && (Period >= 0) && (Period <= 60))
+			{
+				ControlServo(Pin, Period, Position);
+			}
+		}
+		else if (Command == 'R')
+		{
+			// Run external command
+			
+			printf("** RUN COMMAND %s **\n", Message);
+
+			
+			system(Message);
 		}
 	}
 	else

@@ -55,6 +55,8 @@
 #include "prediction.h"
 #include "log.h"
 #include "cutdown.h"
+#include "pin.h"
+
 #ifdef EXTRAS_PRESENT
 #	include "ex_tracker.h"
 #endif	
@@ -725,7 +727,7 @@ int main(void)
 	unsigned char Sentence[200];
 	struct stat st = {0};
 	struct TGPS GPS;
-	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, MS5611Thread, LEDThread, CutdownThread, LogThread, PipeThread;
+	pthread_t PredictionThread, LoRaThread, APRSThread, GPSThread, DS18B20Thread, ADCThread, CameraThread, BMP085Thread, BME280Thread, MS5611Thread, LEDThread, CutdownThread, PinThread, LogThread, PipeThread;
 	if (prog_count("tracker") > 1)
 	
 	{
@@ -1003,6 +1005,12 @@ int main(void)
 	if (pthread_create(&CutdownThread, NULL, CutdownLoop, &GPS))
 	{
 		fprintf(stderr, "Error creating cutdown thread\n");
+		return 1;
+	}
+
+	if (pthread_create(&PinThread, NULL, PinLoop, &GPS))
+	{
+		fprintf(stderr, "Error creating pin thread\n");
 		return 1;
 	}
 
