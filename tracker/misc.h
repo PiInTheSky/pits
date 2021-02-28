@@ -127,6 +127,8 @@ struct TChannel
 	int ImageHeightWhenLow;
 	int ImageWidthWhenHigh;
 	int ImageHeightWhenHigh;
+	int ImageWidthWhenSuperHigh;
+	int ImageHeightWhenSuperHigh;
 	int ImagePeriod;						// Time in seconds between photographs
 	int	TimeSinceLastImage;
 	unsigned int BaudRate;
@@ -174,6 +176,7 @@ struct TConfig
 	// Camera
 	int Camera;	
 	int SSDVHigh;
+	int SSDVSuperHigh;
 	char CameraSettings[80];
 	char SSDVSettings[16];
 	

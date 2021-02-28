@@ -1159,6 +1159,10 @@ void LoadLoRaConfig(FILE *fp, struct TConfig *Config)
 				Config->Channels[Channel].ImageHeightWhenHigh = ReadInteger(fp, "LORA_high_height", LoRaChannel, 0, 480);
 				printf ("      - High image size %d x %d pixels\n", Config->Channels[Channel].ImageWidthWhenHigh, Config->Channels[Channel].ImageHeightWhenHigh);
 
+				Config->Channels[Channel].ImageWidthWhenSuperHigh = ReadInteger(fp, "LORA_superhigh_width", LoRaChannel, 0, 1024);
+				Config->Channels[Channel].ImageHeightWhenSuperHigh = ReadInteger(fp, "LORA_superhigh_height", LoRaChannel, 0, 768);
+				printf ("      - SuperHigh image size %d x %d pixels\n", Config->Channels[Channel].ImageWidthWhenSuperHigh, Config->Channels[Channel].ImageHeightWhenSuperHigh);
+
 				Config->Channels[Channel].ImagePackets = ReadInteger(fp, "LORA_image_packets", LoRaChannel, 0, 4);
 				printf ("      - 1 Telemetry packet every %d image packets\n", Config->Channels[Channel].ImagePackets);
 				

@@ -154,7 +154,12 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 
 void GetWidthAndHeightForChannel(struct TGPS *GPS, int Channel, int *width, int *height)
 {
-	if (GPS->Altitude >= Config.SSDVHigh)
+	if (GPS->Altitude >= Config.SSDVSuperHigh)
+	{
+		*width = Config.Channels[Channel].ImageWidthWhenSuperHigh;
+		*height = Config.Channels[Channel].ImageHeightWhenSuperHigh;
+	}
+	else if (GPS->Altitude >= Config.SSDVHigh)
 	{
 		*width = Config.Channels[Channel].ImageWidthWhenHigh;
 		*height = Config.Channels[Channel].ImageHeightWhenHigh;
