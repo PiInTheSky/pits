@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+27_02_2021
+==========
+
+- Added SuperHigh mode to allow even bigger images.
+
 21_01_2021
 ==========
 

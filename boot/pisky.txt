@@ -6,6 +6,7 @@ camera=Y
 low_width=320
 low_height=240
 high=2000
+superhigh=10000
 high_width=640
 high_height=480
 image_packets=4

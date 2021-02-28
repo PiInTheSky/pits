@@ -211,7 +211,10 @@ void LoadConfigFile(struct TConfig *Config)
 		}
 
 		Config->SSDVHigh = ReadInteger(fp, "high", -1, 0, 2000);
-		printf ("Image size changes at %dm\n", Config->SSDVHigh);
+		printf ("Image size changes at %dm to High\n", Config->SSDVHigh);
+
+		Config->SSDVSuperHigh = ReadInteger(fp, "superhigh", -1, 0, 10000);
+		printf ("Image size changes at %dm to SuperHigh\n", Config->SSDVSuperHigh);
 	
 		if (!Config->DisableRTTY)
 		{
@@ -222,6 +225,10 @@ void LoadConfigFile(struct TConfig *Config)
 			Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh = ReadInteger(fp, "high_width", -1, 0, 640);
 			Config->Channels[RTTY_CHANNEL].ImageHeightWhenHigh = ReadInteger(fp, "high_height", -1, 0, 480);
 			printf ("RTTY High image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenHigh, Config->Channels[0].ImageHeightWhenHigh);
+
+			Config->Channels[RTTY_CHANNEL].ImageWidthWhenSuperHigh = ReadInteger(fp, "superhigh_width", -1, 0, 1024);
+			Config->Channels[RTTY_CHANNEL].ImageHeightWhenSuperHigh = ReadInteger(fp, "superhigh_height", -1, 0, 768);
+			printf ("RTTY SuperHigh image size %d x %d pixels\n", Config->Channels[RTTY_CHANNEL].ImageWidthWhenSuperHigh, Config->Channels[0].ImageHeightWhenSuperHigh);
 
 			Config->Channels[RTTY_CHANNEL].ImagePackets = ReadInteger(fp, "image_packets", -1, 0, 4);
 			printf ("RTTY: 1 Telemetry packet every %d image packets\n", Config->Channels[RTTY_CHANNEL].ImagePackets);
@@ -238,6 +245,10 @@ void LoadConfigFile(struct TConfig *Config)
 		Config->Channels[FULL_CHANNEL].ImageWidthWhenHigh = ReadInteger(fp, "full_high_width", -1, 0, 2592);
 		Config->Channels[FULL_CHANNEL].ImageHeightWhenHigh = ReadInteger(fp, "full_high_height", -1, 0, 1944);
 		printf ("Full High image size %d x %d pixels\n", Config->Channels[FULL_CHANNEL].ImageWidthWhenHigh, Config->Channels[FULL_CHANNEL].ImageHeightWhenHigh);
+
+		Config->Channels[FULL_CHANNEL].ImageWidthWhenSuperHigh = ReadInteger(fp, "full_superhigh_width", -1, 0, 2592);
+		Config->Channels[FULL_CHANNEL].ImageHeightWhenSuperHigh = ReadInteger(fp, "full_superhigh_height", -1, 0, 1944);
+		printf ("Full Super High image size %d x %d pixels\n", Config->Channels[FULL_CHANNEL].ImageWidthWhenSuperHigh, Config->Channels[FULL_CHANNEL].ImageHeightWhenSuperHigh);
 
 		Config->Channels[FULL_CHANNEL].ImagePeriod = ReadInteger(fp, "full_image_period", -1, 0, 60);
 		printf ("Full size: %d seconds between photographs\n", Config->Channels[FULL_CHANNEL].ImagePeriod);
