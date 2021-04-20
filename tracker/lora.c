@@ -122,6 +122,12 @@ void setMode(int LoRaChannel, uint8_t newMode)
     case RF98_MODE_TX:
       writeRegister(LoRaChannel, REG_LNA, LNA_OFF_GAIN);  // TURN LNA OFF FOR TRANSMIT
       writeRegister(LoRaChannel, REG_PA_CONFIG, Config.LoRaDevices[LoRaChannel].Power);
+      if (Config.LoRaDevices[LoRaChannel].Power == 0xFF)
+	  {
+        // Turn on additional amp for 20dBm.
+		// ** ONLY DO IF RADIO LAWS ALLOW, WHICH ESSENTIALLY MEANS YOU@RE A RADIO HAM WHERE YOUR COUNTRY ALLOWS AIRBORNE HAM TRANSMISSIONS.  THIS EXCLUDES UK **
+        writeRegister(LoRaChannel, REG_PA_DAC, PA_DAC_20);
+      }
       writeRegister(LoRaChannel, REG_OPMODE, newMode);
       currentMode = newMode; 
       break;
@@ -550,8 +556,8 @@ void SendLoRaImage(int LoRaChannel, int RTTYMode)
 
 int TDMTimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 {
-	// Can't send till we have the time!
-	if (GPS->Satellites > 0)
+	// Can't send till we have the time, or at least have had it at some point (hopefully Pi maintains a good clock after GPS loss)!
+	if (GPS->SecondsInDay  > 0)
 	{
 		// Can't Tx twice at the same time
 		if (GPS->SecondsInDay != Config.LoRaDevices[LoRaChannel].LastTxAt)
@@ -600,8 +606,9 @@ int TDMTimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 	
 int UplinkTimeToSendOnThisChannel(int LoRaChannel, struct TGPS *GPS)
 {
-	// Can't use time till we have it
-	if (GPS->Satellites > 0)
+	// Can't use time till we have synced from GPS
+	
+	if (GPS->SecondsInDay > 0)
 	{
 		long CycleSeconds;
 		
@@ -698,10 +705,11 @@ double FrequencyError(int Channel)
 		Temp = Temp - 524288;
 	}
 
-	// return - ((double)Temp * (1<<24) / 32000000.0) * (125000 / 500000.0);
-	return - ((double)Temp * (1<<24) / 32000000.0) * (BandwidthInKHz(Channel) / 500.0);
+	// return - ((double)Temp * (1<<24) / 32000000.0) * (BandwidthInKHz(Channel) / 500.0);    <<-- Used Tx settings not Rx
+    return - ((double)Temp * (1<<24) / 32000000.0) * (LoRaModes[Config.LoRaDevices[Channel].UplinkMode].Bandwidth / 500.0);
 }	
 
+	
 int receiveMessage(int LoRaChannel, unsigned char *message)
 {
 	int i, Bytes, currentAddr, x;

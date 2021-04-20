@@ -124,6 +124,13 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+20_04_2021
+==========
+
+- Fixed SSDV image number not wrapping round
+- Fixed frequency error calculation on Rx
+- Allow for uplink if GPS lost
+
 21_01_2021
 ==========
 

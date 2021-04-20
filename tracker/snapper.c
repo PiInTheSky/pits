@@ -112,7 +112,7 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 		if ((fp = fopen(Config.Channels[Channel].convert_file, "wt")) != NULL)
 		{
 			Config.Channels[Channel].SSDVFileNumber++;
-			// Config.Channels[Channel].SSDVFileNumber = Config.Channels[Channel].SSDVFileNumber & 255;
+			Config.Channels[Channel].SSDVFileNumber = Config.Channels[Channel].SSDVFileNumber & 255;
 
 			sprintf(Config.Channels[Channel].ssdv_filename, "ssdv_%d_%d.bin", Channel, Config.Channels[Channel].SSDVFileNumber);
 			

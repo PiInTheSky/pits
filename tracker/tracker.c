@@ -922,7 +922,7 @@ int main(void)
 			Config.Channels[i].SSDVPacketNumber = -1;
 			
 			Config.Channels[i].ImageFP = NULL;
-		}
+		}	
 	}
 	
 	if (pthread_create(&GPSThread, NULL, GPSLoop, &GPS))

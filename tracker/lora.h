@@ -85,6 +85,8 @@
 #define PA_MAX_UK                   0x88
 #define PA_OFF_BOOST                0x00
 #define RFO_MIN                     0x00
+#define REG_PA_DAC 					0x4D
+#define PA_DAC_20 					0x87
 
 // LOW NOISE AMPLIFIER
 #define REG_LNA                     0x0C
