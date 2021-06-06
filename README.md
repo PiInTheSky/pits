@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+06_06_2021
+==========
+
+- Fixed bug that killed RTTY enable pin during initialisation if no cutdown pin configured
+
 20_04_2021
 ==========
 

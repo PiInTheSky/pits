@@ -129,21 +129,24 @@ void Cutdown(int Period)
 
 void *CutdownLoop(void *some_void_ptr)
 {
-	// Configure output
-	pinMode (Config.CutdownPin, OUTPUT);
-	digitalWrite (Config.CutdownPin, 0);
-	
-	while (1)
+	if (Config.CutdownPin > 0)
 	{
-		if (CutdownPeriod > 0)
-		{
-			digitalWrite (Config.CutdownPin, 1);
-			sleep(CutdownPeriod);
-			digitalWrite (Config.CutdownPin, 0);
-			CutdownPeriod = 0;
-		}
+		// Configure output
+		pinMode (Config.CutdownPin, OUTPUT);
+		digitalWrite (Config.CutdownPin, 0);
 		
-		sleep(1);
+		while (1)
+		{
+			if (CutdownPeriod > 0)
+			{
+				digitalWrite (Config.CutdownPin, 1);
+				sleep(CutdownPeriod);
+				digitalWrite (Config.CutdownPin, 0);
+				CutdownPeriod = 0;
+			}
+			
+			sleep(1);
+		}
 	}
 
 	return 0;
