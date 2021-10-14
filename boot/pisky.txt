@@ -31,8 +31,11 @@ APRS_Random=5
 #LORA_Frequency_0=434.225
 #LORA_Payload_0=CHANGEME
 #LORA_Mode_0=0
+#LORA_Calling_Frequency_0=433.650
+#LORA_Calling_Count_0=5
 
 #LORA_Frequency_1=434.275
 #LORA_Payload_1=CHANGEME
 #LORA_Mode_1=1
-
+#LORA_Calling_Frequency_1=433.650
+#LORA_Calling_Count_1=5
