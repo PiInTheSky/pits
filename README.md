@@ -312,7 +312,7 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 - Fixes for multiple DS18B20 sensors
 - Ability to run emulated flight from GPS NMEA file
 - Ability to modify SSDV images before transmission using ImageMagick etc.
-- LoRa Calling Mode
+- [LoRa Calling Mode](http://www.daveakerman.com/?p=1816)
 - RTTY serial port kept open continuously
 - Startup radio message with IP address etc.
 - Stop multiple tracker programs from being run
