@@ -1,15 +1,12 @@
 #!/bin/bash
 cd /home/pi/pits/tracker
-# sudo ./camera &
+sudo ./camera &
 # sleep 30
 # sudo python3 gopro.py &
 # python3 sensors.py &
 # python3 astro_led.py &
 # python3 webstuff.py
-rm -f convert_*
-./waitfornetwork
-sleep 10
-sudo python3 gopro.py &
+# sudo python3 gopro.py &
 while :
 do
 	sudo ./tracker
