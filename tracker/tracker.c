@@ -70,7 +70,7 @@ struct TConfig Config;
 // BCM PINS
 #define NTX2B_ENABLE_BCM	17
 
-int Records, FileNumber;
+// int Records, FileNumber;
 struct termios options;
 char *SSDVFolder="/home/pi/pits/tracker/images";
  

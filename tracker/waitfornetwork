@@ -1,0 +1,3 @@
+while ! ifconfig | grep -F "10.5.5." > /dev/null; do
+	sleep 1
+done

@@ -689,7 +689,8 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 				{
 					struct tm tm;
 					char timedatestring[32];
-					time_t t;
+					
+					struct timespec tp;
 
 					// Now create a tm structure from our date and time
 					memset(&tm, 0, sizeof(struct tm));
@@ -697,16 +698,17 @@ void ProcessLine(struct gps_info *bb, struct TGPS *GPS, char *Buffer, int Count,
 											date[0], date[1], date[2], date[3], date[4], date[5],
 											timestring[0], timestring[1], timestring[2], timestring[3], timestring[4], timestring[5]);
 					strptime(timedatestring, "%d-%m-%Y %H:%M:%S", &tm);
-				
-					t = mktime(&tm);
-					if (stime(&t) == -1)
-					{
-						printf("Failed to set system time\n");
-					}
-					else
+							
+					tp.tv_sec = mktime(&tm);
+					tp.tv_nsec = 0;
+					if (clock_settime(CLOCK_REALTIME, &tp) == 0)
 					{
 						printf("System time set from GPS time\n");
 						SystemTimeHasBeenSet = 1;
+					}
+					else
+					{
+						printf("Failed to set system time\n");
 					}
 				}
 			}

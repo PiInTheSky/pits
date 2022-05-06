@@ -1,3 +1,0 @@
-gphoto2 --set-config-index /capturesettings/aperture=0
-gphoto2 --set-config /capturesettings/shutterspeed=1/10
-gphoto2 --capture-image-and-download --force-overwrite --filename $1

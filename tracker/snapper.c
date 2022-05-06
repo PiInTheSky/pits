@@ -17,6 +17,9 @@
 #include "gps.h"
 #include "misc.h"
 
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
+
 int SSDVPacketsToSend(int Channel)
 {
 	int i, j, Count;
@@ -89,7 +92,7 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 			{
 				if (strchr(ep->d_name, '~') == NULL)
 				{
-					sprintf(FileName, "%.60s/%.30s", SSDVFolder, ep->d_name);
+					snprintf(FileName, sizeof(FileName), "%.60s/%.30s", SSDVFolder, ep->d_name);
 					stat(FileName, &st);
 					if (st.st_size > LargestFileSize)
 					{
@@ -114,7 +117,7 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 			Config.Channels[Channel].SSDVFileNumber++;
 			Config.Channels[Channel].SSDVFileNumber = Config.Channels[Channel].SSDVFileNumber & 255;
 
-			sprintf(Config.Channels[Channel].ssdv_filename, "ssdv_%d_%d.bin", Channel, Config.Channels[Channel].SSDVFileNumber);
+			snprintf(Config.Channels[Channel].ssdv_filename, sizeof(Config.Channels[Channel].ssdv_filename), "ssdv_%d_%d.bin", Channel, Config.Channels[Channel].SSDVFileNumber);
 			
 			if (Config.Camera == 4)
 			{
@@ -208,7 +211,7 @@ void *CameraLoop(void *some_void_ptr)
 					if ((width >= 0) && (height >= 0))
 					{
 						// Create name of file
-						sprintf(filename, "/home/pi/pits/tracker/take_pic_%d", Channel);
+						snprintf(filename, sizeof(filename), "/home/pi/pits/tracker/take_pic_%d", Channel);
 						
 						// Leave it alone if it exists (this means that the photo has not been taken yet)
 						if (access(filename, F_OK ) == -1)
@@ -224,7 +227,7 @@ void *CameraLoop(void *some_void_ptr)
 									// Full size images are saved in dated folder names
 									fprintf(fp, "mkdir -p %s/$2\n", Config.Channels[Channel].SSDVFolder);
 
-									sprintf(FileName, "%s/$2/$1.JPG", Config.Channels[Channel].SSDVFolder);				
+									snprintf(FileName, sizeof(FileName), "%s/$2/$1.JPG", Config.Channels[Channel].SSDVFolder);				
 
 									if (Config.Camera == 3)
 									{
@@ -255,7 +258,7 @@ void *CameraLoop(void *some_void_ptr)
 								}
 								else
 								{
-									sprintf(FileName, "%s/$1.JPG", Config.Channels[Channel].SSDVFolder);
+									snprintf(FileName, sizeof(FileName), "%s/$1.JPG", Config.Channels[Channel].SSDVFolder);
 
 									if (Config.Camera == 3)
 									{
