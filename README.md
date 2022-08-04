@@ -2,6 +2,15 @@
 
 Created by Dave Akerman (dave@sccs.co.uk)
 
+# Changes by KevWal not pushed upstream #
+
+- Added GPS example flight files for use by gps_source= option
+- Added MOTD, changed startup to rc.local and Screen
+- Added boot/pisky.current.txt as link to /boot/pisky.txt
+
+
+# PITS - HAB Tracker software for the PITS boards #
+
 This software is written for the PITS Zero with Pi Zero, PITS+ with the various A+/B+ models, and the original PITS with the Pi A/B boards.
 
 PITS Zero and PITS+ can be purchased from board from http://ava.upuaut.net/store/.
