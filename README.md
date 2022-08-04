@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+04_08_2022
+==========
+
+- Added option called EnableADCVolt to enable the ADC on boards that should not have an ADC (but do)
+
 06_06_2021
 ==========
 
