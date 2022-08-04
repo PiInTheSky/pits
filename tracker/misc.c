@@ -831,11 +831,11 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	
 	
 	// Battery voltage and current, if available
-	if ((Config.BoardType == 3) || (Config.BoardType == 4) || (Config.DisableADC))
+	if (((Config.BoardType == 3) || (Config.BoardType == 4) || (Config.DisableADC)) & (!Config.EnableADCVolt))
 	{
 			// Pi Zero - no ADC on the PITS Zero, or manually disabled ADC
 	}
-	else if (Config.BoardType == 0)
+	else if ((Config.BoardType == 0) || (Config.EnableADCVolt))
 	{
 		// Pi A or B.  Only Battery Voltage on the PITS
 		
