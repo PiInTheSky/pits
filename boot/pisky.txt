@@ -11,6 +11,12 @@ high_height=480
 image_packets=4
 enable_bmp085=N
 external_temperature=1
+
+# Disable_ADC is used to disable the ADC on boards that should have an ADC (but dont)
+Disable_ADC=0
+# EnableADCVolt is used to enable the ADC (for voltage) on boards that should not have an ADC (but do)
+Enable_ADC_Volt=0
+
 adc_vmax=18.5
 logging=GPS,Telemetry
 Disable_RTTY=N
