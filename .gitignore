@@ -15,6 +15,7 @@ tracker/ex_*
 *.JPG
 *.sms
 *.old
+camera.txt
 telemetry.txt
 gps.txt
 prediction.txt

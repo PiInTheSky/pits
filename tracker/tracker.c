@@ -806,9 +806,10 @@ int main(void)
 	{
 		// remove SSDV and other camera images, plus log files
 
-		printf("Removing existing photo files\n");
+		printf("Removing existing log & photo files\n");
 		remove("gps.txt");
 		remove("telemetry.txt");
+		remove("camera.txt");
 		remove("/boot/clear.txt");
 		system("rm -rf /home/pi/pits/tracker/images/*");
 	}
