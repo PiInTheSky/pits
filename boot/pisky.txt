@@ -1,8 +1,5 @@
-# Complete as of 6th May
-
 # Disable HDMI/Composite outputs
 disable_monitor=Y
-
 
 # Enable Buoy mode below X meters
 #buoy_below=100
