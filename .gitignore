@@ -1,6 +1,7 @@
 .dropbox
 desktop.ini
 *.o
+*.~?~
 tracker/tracker
 tracker/download
 tracker/keep
@@ -11,11 +12,12 @@ tracker/webstuff.py
 tracker/batc
 tracker/youtube
 tracker/ex_*
-*.NMEA
+tracker/images/
 *.jpg
 *.JPG
 *.sms
 *.old
+camera.txt
 telemetry.txt
 gps.txt
 prediction.txt
