@@ -1,6 +1,6 @@
 #!/bin/bash
 cd /home/pi/pits/tracker
-sudo ./camera 2>&1 >> /home/pi/pits/tracker/camera.txt &
+sudo ./camera &
 # sleep 30
 # sudo python3 gopro.py &
 # python3 sensors.py &

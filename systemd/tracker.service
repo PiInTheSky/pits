@@ -1,0 +1,10 @@
+[Unit]
+Description=PITS Tracker Service
+ 
+[Service]
+ExecStart=/home/pi/pits/tracker/startup
+StandardOutput=null
+ 
+[Install]
+WantedBy=multi-user.target
+Alias=tracker.service
