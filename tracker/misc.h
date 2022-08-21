@@ -168,7 +168,6 @@ struct TConfig
 	int BoardType;
 	int i2cChannel;
 	int DisableADC;
-	int EnableADCVolt;
 	int32_t BuoyModeAltitude;
 	double MaxADCVoltage;
 	

@@ -2,15 +2,6 @@
 
 Created by Dave Akerman (dave@sccs.co.uk)
 
-# Changes by KevWal not pushed upstream #
-
-- Added GPS example flight files for use by gps_source= option
-- Added MOTD, changed startup to rc.local and Screen
-- Added boot/pisky.current.txt as link to /boot/pisky.txt
-
-
-# PITS - HAB Tracker software for the PITS boards #
-
 This software is written for the PITS Zero with Pi Zero, PITS+ with the various A+/B+ models, and the original PITS with the Pi A/B boards.
 
 PITS Zero and PITS+ can be purchased from board from http://ava.upuaut.net/store/.
@@ -132,11 +123,6 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 
 ## Change Log ##
-
-04_08_2022
-==========
-
-- Added option called Enable_ADC_Volt to enable the ADC (for voltage) on boards that should not have an ADC (but do)
 
 06_06_2021
 ==========

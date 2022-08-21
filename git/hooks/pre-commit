@@ -1,9 +1,0 @@
-#!/bin/sh
-
-echo "Git pre-commit - Copy files into repo"
-cp -v --backup=numbered /boot/cmdline.txt boot/
-cp -v --backup=numbered /boot/config.txt boot/
-cp -v --backup=numbered /boot/pisky.txt boot/
-cp -v --backup=numbered .git/hooks/pre-commit git/hooks
-
-# the end
