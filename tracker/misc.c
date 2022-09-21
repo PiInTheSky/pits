@@ -804,7 +804,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	static int FirstTime=1;
 	int LoRaChannel;
 	int ShowFields;
-	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], ExtraFields7[32], *ExtraFields8, Sentence[512];
+	char TimeBuffer[12], ExtraFields1[20], ExtraFields2[20], ExtraFields3[20], ExtraFields4[64], ExtraFields5[32], ExtraFields6[32], ExtraFields7[32], *ExtraFields8, Sentence[512], FieldList[32];
 	
 	if (FirstTime)
 	{
@@ -827,7 +827,8 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	
 	ExtraFields8 = "";
 	
-	if (ShowFields) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Speed,Head,Sats,Int.Temp", Channels[Channel]);
+	strcpy(FieldList, ",0123456A");
+	if (ShowFields) printf("%s: ID,Ctr,Time,Lat,Lon,Alt,Sats,Int.Temp", Channels[Channel]);
 	
 	
 	// Battery voltage and current, if available
@@ -840,6 +841,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 		// Pi A or B.  Only Battery Voltage on the PITS
 		
 		sprintf(ExtraFields1, ",%.3f", GPS->BatteryVoltage);
+		strcat(FieldList, "9");
 		if (ShowFields) printf(",Volts");
 	}
 	else
@@ -847,6 +849,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 		// Pi A+ or B+ (V1 or V2 or V3).  Full ADC for voltage and current
 
 		sprintf(ExtraFields1, ",%.1f,%.3f", GPS->BatteryVoltage, GPS->BoardCurrent);
+		strcat(FieldList, "9P");
 		if (ShowFields) printf(",Volts,Current");
 	}
 	
@@ -854,16 +857,19 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	if (Config.EnableBME280)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.0f,%0.1f", GPS->BMP180Temperature, GPS->Pressure, GPS->Humidity);
+		strcat(FieldList, "QRS");
 		if (ShowFields) printf(",BME.Temp,Pressure,Humidity");
 	}
 	else if (Config.EnableMS5611)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.1f", GPS->BMP180Temperature, GPS->Pressure);
+		strcat(FieldList, "QR");
 		if (ShowFields) printf(",BMP.Temp,Pressure");
 	}
 	else if (Config.EnableBMP085)
 	{
 		sprintf(ExtraFields2, ",%.1f,%.0f", GPS->BMP180Temperature, GPS->Pressure);
+		strcat(FieldList, "QR");
 		if (ShowFields) printf(",BMP.Temp,Pressure");
 	}
 	
@@ -871,6 +877,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	if (GPS->DS18B20Count > 1)
 	{
 		sprintf(ExtraFields3, ",%3.1f", GPS->DS18B20Temperature[Config.ExternalDS18B20]);
+		strcat(FieldList, "B");
 		if (ShowFields) printf(",Ext.Temp");
 	}
 	
@@ -883,6 +890,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 																GPS->PredictedLongitude,
 																GPS->PredictedLandingSpeed,
 																GPS->TimeTillLanding);
+		strcat(FieldList, "TCDUV");
 		if (ShowFields) printf(",CDA,Pred.Lat,Pred.Lon,Pred.Land,Pred.TTL");
 	}
 	
@@ -896,12 +904,14 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 			sprintf(ExtraFields5, ",%d,%d,%d", Config.LoRaDevices[LoRaChannel].LastPacketRSSI,
 											   Config.LoRaDevices[LoRaChannel].LastPacketSNR,
 											   Config.LoRaDevices[LoRaChannel].PacketCount);
+			strcat(FieldList, "GFH");
 			if (ShowFields) printf(",RSSI,SNR,Packets");
 		}
 
 		if (Config.LoRaDevices[LoRaChannel].EnableMessageStatus)
 		{	
 			sprintf(ExtraFields6, ",%c", Config.LoRaDevices[LoRaChannel].LastCommand[0]);
+			strcat(FieldList, "W");
 			if (ShowFields) printf(",Command");
 		}
 		
@@ -953,6 +963,7 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 	if (Config.EnableCutdown)
 	{
 		sprintf(ExtraFields7, ",%d", GPS->CutdownStatus);
+		strcat(FieldList, "E");
 		if (ShowFields) printf(",CutdownStatus");
 	}
 	
@@ -974,15 +985,15 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 			
 		if (ShowFields) printf("\n");
 		
-		snprintf(Sentence, 512, "$$%.15s,%d,%.9s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%d,%d,%3.1f%.12s%.20s%.20s%.40s%.90s%.20s%.10s%.10s%.40s",
+		snprintf(Sentence, 512, "$$%.15s,%d,%.9s,%7.5lf,%7.5lf,%5.5" PRId32  ",%d,%3.1f%.12s%.20s%.20s%.40s%.90s%.20s%.10s%.10s%.40s%s",
 				Config.Channels[Channel].PayloadID,
 				Config.Channels[Channel].SentenceCounter,
 				TimeBuffer,
 				GPS->Latitude,
 				GPS->Longitude,
 				GPS->Altitude,
-				(GPS->Speed * 13) / 7,
-				GPS->Direction,
+						  
+				   
 				GPS->Satellites,
 				GPS->DS18B20Temperature[(GPS->DS18B20Count > 1) ? (1-Config.ExternalDS18B20) : 0],
 				ExtraFields1,
@@ -993,7 +1004,8 @@ int BuildSentence(unsigned char *TxLine, int Channel, struct TGPS *GPS)
 				ExtraFields5,
 				ExtraFields6,
 				ExtraFields7,
-				ExtraFields8);
+				ExtraFields8,
+				Config.SendFieldList ? FieldList : "");
 	}
 	
 	AppendCRC(Sentence);

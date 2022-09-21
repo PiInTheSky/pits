@@ -15,6 +15,7 @@ adc_vmax=18.5
 logging=GPS,Telemetry
 Disable_RTTY=N
 info_messages=2
+Send_Field_List=N
 
 full_low_width=640
 full_low_height=480

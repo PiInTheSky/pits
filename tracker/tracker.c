@@ -113,6 +113,7 @@ void LoadConfigFile(struct TConfig *Config)
 		printf("HDMI/Composite outputs will be disabled\n");
 	}
 	
+	ReadBoolean(fp, "Send_Field_List", -1, 0, &(Config->SendFieldList));
 	ReadBoolean(fp, "Disable_ADC", -1, 0, &(Config->DisableADC));
 	ReadBoolean(fp, "Disable_RTTY", -1, 0, &(Config->DisableRTTY));
 	Config->Channels[RTTY_CHANNEL].Enabled = !Config->DisableRTTY;
