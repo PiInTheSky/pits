@@ -652,6 +652,11 @@ int ReadCameraType(FILE *fp, char *keyword)
 		return 4;		// Python script e.g. for GoPro
 	}
 	
+	if ((*Temp == 'E') || (*Temp == 'e'))
+	{
+		return 5;		// External camera
+	}
+	
 	return 0;
 }
 

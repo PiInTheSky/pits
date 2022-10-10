@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -88,7 +90,7 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 	{
 		while ((ep = readdir (dp)) != NULL)
 		{
-			if (strstr(ep->d_name, ".JPG") != NULL)
+			if (strcasestr(ep->d_name, ".JPG") != NULL)
 			{
 				if (strchr(ep->d_name, '~') == NULL)
 				{
@@ -146,7 +148,14 @@ void FindBestImageAndRequestConversion(int Channel, int width, int height)
 				
 				fprintf(fp, "ssdv %s -e -c %.6s -i %d %s %s\n", Config.SSDVSettings, Config.Channels[Channel].PayloadID, Config.Channels[Channel].SSDVFileNumber, "ssdv.jpg", Config.Channels[Channel].ssdv_filename);
 				fprintf(fp, "mkdir -p %s/$1\n", SSDVFolder);
-				fprintf(fp, "mv %s/*.JPG %s/$1\n", SSDVFolder, SSDVFolder);
+				if (Config.Camera == 5)
+				{
+					fprintf(fp, "mv %s/*.jpg %s/$1\n", SSDVFolder, SSDVFolder);
+				}
+				else
+				{
+					fprintf(fp, "mv %s/*.JPG %s/$1\n", SSDVFolder, SSDVFolder);
+				}	
 				fprintf(fp, "echo DONE > %s\n", Config.Channels[Channel].ssdv_done);
 			}
 			fclose(fp);
@@ -198,9 +207,9 @@ void *CameraLoop(void *some_void_ptr)
 		{
 			if (Config.Channels[Channel].Enabled && (Config.Channels[Channel].ImagePackets > 0))
 			{
-				// Channel using SSDV
+				// Channel using images
 				
-				if (++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod)
+				if ((Config.Camera != 5) && (++Config.Channels[Channel].TimeSinceLastImage >= Config.Channels[Channel].ImagePeriod))
 				{
 					// Time to take a photo on this channel
 

@@ -117,10 +117,13 @@ void *PredictionLoop(void *some_void_ptr)
 				else if ((GPS->FlightMode >= fmDescending) && (GPS->FlightMode <= fmLanding))
 				{
 					// Coming down - try and calculate how well chute is doing
-
-					GPS->CDA = (GPS->CDA*4 + CalculateCDA(Config.payload_weight,
-														GPS->Altitude/2 + PreviousAltitude/2,
-														((double)PreviousAltitude - (double)GPS->Altitude) / POLL_PERIOD)) / 5;
+					
+					if (GPS->Altitude < PreviousAltitude)
+					{
+						GPS->CDA = (GPS->CDA*4 + CalculateCDA(Config.payload_weight,
+															GPS->Altitude/2 + PreviousAltitude/2,
+															((double)PreviousAltitude - (double)GPS->Altitude) / POLL_PERIOD)) / 5;
+					}
 
 				}
 				
