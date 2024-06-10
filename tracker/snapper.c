@@ -253,6 +253,19 @@ void *CameraLoop(void *some_void_ptr)
 									{
 										fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
 									}
+                                                                       else if (Config.Camera == 6)
+
+                                                                        {
+                                                                                if ((width == 0) || (height == 0))
+                                                                                {
+                                                                                        fprintf(fp, "rpicam-still %s -o %s\n", Config.CameraSettings, FileName);
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                        fprintf(fp, "rpicam-still --width %d --height %d %s -o %s\n", width, height, Config.CameraSettings, FileName);
+                                                                                }
+                                                                        }
+
 									else
 									{
 										if ((width == 0) || (height == 0))
@@ -277,6 +290,10 @@ void *CameraLoop(void *some_void_ptr)
 									else if (Config.Camera == 2)
 									{
 										fprintf(fp, "fswebcam -r %dx%d --no-banner %s\n", width, height, FileName);
+									}
+									else if (Config.Camera == 6)
+									{
+										fprintf(fp, "rpicam-still --width %d --height %d %s -o %s\n", width, height, Config.CameraSettings, FileName);
 									}
 									else
 									{

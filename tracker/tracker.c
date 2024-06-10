@@ -96,7 +96,7 @@ speed_t BaudToSpeed(int baud)
 
 void LoadConfigFile(struct TConfig *Config)
 {
-	const char* CameraTypes[6] = {"None", "CSI Pi Camera - raspistill", "USB webcam - fswebcam", "USB camera - gphoto2", "Python Script", "External Camera"};
+	const char* CameraTypes[7] = {"None", "CSI Pi Camera - raspistill", "USB webcam - fswebcam", "USB camera - gphoto2", "Python Script", "External Camera", "CSI Pi Camera - rpicam-still"};
 	FILE *fp;
 	int BaudRate;
 	char *filename = "/boot/pisky.txt";
@@ -194,7 +194,7 @@ void LoadConfigFile(struct TConfig *Config)
 	Config->MaxADCVoltage = ReadFloat(fp, "adc_vmax", -1, 0, 18.5);
 
 	Config->Camera = ReadCameraType(fp, "camera");
-	printf ("Camera (%s) %s\n", CameraTypes[Config->Camera], Config->Camera ? "Enabled" : "Disabled");
+	printf ("Camera Type %d (%s) %s\n", Config->Camera, CameraTypes[Config->Camera], Config->Camera ? "Enabled" : "Disabled");
 	
 	if (Config->Camera)
 	{

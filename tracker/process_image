@@ -1,0 +1,60 @@
+#!/bin/bash
+echo Processing image $2 for channel $1
+#
+# This script gets telemetry from the jpeg file comment field, and overlays image with altitude etc.
+#
+rm -f ssdv.jpg
+TELEMETRY="$(exiv2 -pc $2)"
+#echo $TELEMETRY
+LIST=$(echo $TELEMETRY | tr ";" " ")
+#echo $LIST
+for ITEM in ${LIST}
+do
+	VALUE=($(echo $ITEM | tr "=" " "))
+	if [ "${VALUE[0]}" = "Alt" ]; then
+		ALTITUDE=${VALUE[1]}
+	elif [ "${VALUE[0]}" = "MaxAlt" ]; then
+		MAX_ALT=${VALUE[1]}
+	elif [ "${VALUE[0]}" = "Lat" ]; then
+		LATITUDE=${VALUE[1]}
+	elif [ "${VALUE[0]}" = "Long" ]; then
+		LONGITUDE=${VALUE[1]}
+	elif [ "${VALUE[0]}" = "UTC" ]; then
+		UTC=${VALUE[1]}
+	elif [ "${VALUE[0]}" = "Ascent" ]; then
+		ASCENT=${VALUE[1]}
+	elif [ "${VALUE[0]}" = "Mode" ]; then
+		MODE=${VALUE[1]}
+	fi
+done
+let OFFSET=760-$ALTITUDE*705/44000
+if [ $MODE -eq 0 ]; then
+	ICON="payload.png"
+elif [ $MODE -eq 1 ]; then
+	ICON="balloon.png"
+elif [ $MODE -eq 2 ]; then
+	ICON="parachute.png"
+else
+	ICON=""
+fi
+LABEL1="${ALTITUDE}m (${MAX_ALT}m)"
+LABEL2=${LATITUDE},${LONGITUDE}
+LABEL3=$UTC
+convert $2 -gamma 0.8 -font Dosis-Medium -pointsize 48 \
+	\
+	-gravity SouthWest -strokewidth 2 \
+	-stroke '#000C' -annotate 0 "  $LABEL1" \
+	-stroke  none -fill white -annotate 0 "  $LABEL1" \
+	\
+	-gravity South \
+	-stroke '#000C' -annotate 0 $LABEL2 \
+	-stroke none -fill white -annotate 0 $LABEL2 \
+	\
+	-gravity SouthEast \
+	-stroke '#000C' -annotate 0 "$LABEL3  " \
+	-stroke none -fill white -annotate 0 "$LABEL3  " \
+	\
+	-fill "rgba( 255, 255, 255, 0.25 )" -draw "rectangle 46,30 116,890 " \
+	-fill gray -draw "rectangle 81,50 83,870" \
+	\
+	$ICON -gravity NorthWest -geometry +49+$OFFSET -composite ssdv.jpg

@@ -124,6 +124,11 @@ It is therefore possible to overlay downloaded images with telemetry data, as te
 
 ## Change Log ##
 
+07_06_2024
+==========
+
+- Added support for new camera commands replacing raspistill.  Use "R" for camera type
+
 06_06_2021
 ==========
 

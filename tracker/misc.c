@@ -656,6 +656,12 @@ int ReadCameraType(FILE *fp, char *keyword)
 	{
 		return 5;		// External camera
 	}
+
+        if ((*Temp == 'R') || (*Temp == 'r'))
+        {
+                return 6;               // RPI Camera (new interface - rpicam)
+        }
+
 	
 	return 0;
 }
